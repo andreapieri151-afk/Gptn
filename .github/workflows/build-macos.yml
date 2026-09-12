@@ -45,15 +45,24 @@ jobs:
         # A failing packaging step is otherwise invisible when the raw job log
         # cannot be downloaded: the tail of the log becomes a job annotation.
         if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "Node $(node -v) / npm $(npm -v)"
           echo "--- release/ ---"
           ls -la release 2>/dev/null || echo "(no release directory)"
           if [ -f dist.log ]; then
             echo "--- tail of dist.log ---"
-            tail -n 25 dist.log | while IFS= read -r line; do
-              printf '%%s\n' "::error title=dist:mac::${line//'%'/'%25'}"
+            tail -n 40 dist.log
+            tail -n 20 dist.log | while IFS= read -r line; do
+              escaped="${line//'%'/'%25'}"
+              echo "::error title=dist:mac::${escaped}"
             done
+            # The raw job log is not always downloadable: publish the tail where it
+            # can always be read (commit comments are part of the public API).
+            tail -c 60000 dist.log > dist-tail.txt
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
+              -f body="$(printf 'dist:mac failed on %s (%s)\n\n```\n' "${GITHUB_REF_NAME}" "$(node -v)" ; cat dist-tail.txt ; printf '\n```\n')" || true
           else
             echo "::error title=dist:mac::no dist.log produced"
           fi
