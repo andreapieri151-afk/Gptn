@@ -30,7 +30,9 @@ jobs:
       - name: Build GPTN.app and DMG
         # With the signing secrets configured the app is signed and notarised;
         # without them the workflow still produces a runnable (unsigned) build.
-        run: npm run dist:mac
+        run: |
+          set -o pipefail
+          npm run dist:mac 2>&1 | tee dist.log
         env:
           # Optional: add these repository secrets to produce signed, notarised builds.
           CSC_LINK: ${{ secrets.CSC_LINK }}
@@ -38,6 +40,23 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Report packaging failure
+        # A failing packaging step is otherwise invisible when the raw job log
+        # cannot be downloaded: the tail of the log becomes a job annotation.
+        if: failure()
+        run: |
+          echo "Node $(node -v) / npm $(npm -v)"
+          echo "--- release/ ---"
+          ls -la release 2>/dev/null || echo "(no release directory)"
+          if [ -f dist.log ]; then
+            echo "--- tail of dist.log ---"
+            tail -n 25 dist.log | while IFS= read -r line; do
+              printf '%%s\n' "::error title=dist:mac::${line//'%'/'%25'}"
+            done
+          else
+            echo "::error title=dist:mac::no dist.log produced"
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -47,6 +66,14 @@ jobs:
             release/*.dmg
             release/*.zip
           if-no-files-found: error
+
+      - name: Upload packaging log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-log
+          path: dist.log
+          if-no-files-found: ignore
 
       - name: Attach installers to the GitHub Release
         # Only for tag builds, and only if the release does not exist yet: the
