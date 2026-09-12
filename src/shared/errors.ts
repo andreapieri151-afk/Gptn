@@ -94,18 +94,24 @@ export function fromHttpStatus(
   status: number,
   apiStatus: string | undefined,
   apiMessage: string | undefined,
-  model?: string
+  model?: string,
+  apiReason?: string
 ): AppError {
-  const detail = [apiStatus && `${status} ${apiStatus}`, apiMessage].filter(Boolean).join(' — ')
-  const normalized = (apiStatus ?? '').toUpperCase()
+  // The technical detail keeps Google's status, reason and message for the
+  // "Technical details" disclosure (never as the headline the user sees).
+  const detail = [apiStatus && `${status} ${apiStatus}`, apiReason, apiMessage].filter(Boolean).join(' — ')
+  // Google reports a bad key as 400 INVALID_ARGUMENT with reason API_KEY_INVALID
+  // (details[].reason), sometimes as 401/403. All of them mean "check your key".
+  const keyProblem =
+    /API_KEY_INVALID|API_KEY_EXPIRED/i.test(apiReason ?? '') ||
+    /API key not valid|API key expired|API_KEY_INVALID|unregistered callers/i.test(apiMessage ?? '')
 
   if (status === 400) {
-    if (/API key not valid|API_KEY_INVALID/i.test(apiMessage ?? '') || normalized === 'INVALID_ARGUMENT') {
+    if (keyProblem) {
       return new AppError({
-        code: ErrorCode.INVALID_REQUEST,
-        title: titles.INVALID_REQUEST,
-        message:
-          'Gemini could not process this request. Check your API settings or try again with a shorter conversation.',
+        code: ErrorCode.INVALID_API_KEY,
+        title: titles.INVALID_API_KEY,
+        message: invalidKeyMessage(),
         detail,
         settingsHint: true,
         retryable: false
@@ -122,12 +128,11 @@ export function fromHttpStatus(
     })
   }
   if (status === 401 || status === 403) {
-    const keyProblem = /API key not valid|API_KEY_INVALID|unregistered callers/i.test(apiMessage ?? '')
     if (keyProblem || status === 401) {
       return new AppError({
         code: ErrorCode.INVALID_API_KEY,
         title: titles.INVALID_API_KEY,
-        message: 'The API key was rejected by Google. Add a valid Gemini API key in Settings.',
+        message: invalidKeyMessage(),
         detail,
         settingsHint: true,
         retryable: false
@@ -235,6 +240,10 @@ export function fromThrown(error: unknown): AppError {
     detail: message,
     retryable: true
   })
+}
+
+function invalidKeyMessage(): string {
+  return 'Google rejected this API key. Check that it is copied in full and that the Generative Language API is enabled for its project.'
 }
 
 export function noApiKeyError(): AppError {

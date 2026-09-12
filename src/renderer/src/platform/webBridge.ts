@@ -126,10 +126,6 @@ export function createPreviewBridge(): GptnApi {
       openExternal: async (url: string) => {
         window.open(url, '_blank', 'noopener,noreferrer')
       },
-      openPath: async (path: string) => {
-        log('openPath', path)
-        return false
-      },
       onCommand: (handler: (command: UiCommand) => void) => {
         listeners.command.add(handler)
         return () => {
@@ -321,10 +317,5 @@ export function createPreviewBridge(): GptnApi {
         oldest: data.conversations.at(-1)?.createdAt ?? null
       })
     },
-    window: {
-      minimize: () => undefined,
-      zoom: () => undefined,
-      close: () => undefined
-    }
   }
 }

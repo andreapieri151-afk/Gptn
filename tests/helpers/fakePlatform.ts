@@ -118,7 +118,6 @@ export function createFakePlatform(hasApiKey = true): FakePlatform {
       openExternal: async (url: string) => {
         openedUrls.push(url)
       },
-      openPath: async () => true,
       onCommand: (handler) => {
         commandListeners.add(handler)
         return () => {
@@ -263,11 +262,6 @@ export function createFakePlatform(hasApiKey = true): FakePlatform {
         oldest: null
       })
     },
-    window: {
-      minimize: () => undefined,
-      zoom: () => undefined,
-      close: () => undefined
-    }
   }
 
   return {

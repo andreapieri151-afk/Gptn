@@ -100,20 +100,34 @@ function buildRequestInit(params: GenerateParams): { url: string; init: RequestI
   }
 }
 
+interface ApiErrorBody {
+  code?: number
+  status?: string
+  message?: string
+  details?: Array<{ reason?: string }>
+}
+
+/** Extracts Google's `details[].reason`, e.g. API_KEY_INVALID. */
+function reasonOf(body: ApiErrorBody | undefined): string | undefined {
+  return body?.details?.find((entry) => typeof entry?.reason === 'string')?.reason
+}
+
 /** Reads the error body of a failed response and maps it to a friendly AppError. */
 async function toHttpError(response: Response, model: string): Promise<AppError> {
   let apiStatus: string | undefined
   let apiMessage: string | undefined
+  let apiReason: string | undefined
   let raw = ''
   try {
     raw = await response.text()
-    const parsed = JSON.parse(raw) as { error?: { status?: string; message?: string; code?: number } }
+    const parsed = JSON.parse(raw) as { error?: ApiErrorBody }
     apiStatus = parsed.error?.status
     apiMessage = parsed.error?.message
+    apiReason = reasonOf(parsed.error)
   } catch {
     apiMessage = raw.slice(0, 400) || response.statusText
   }
-  return fromHttpStatus(response.status, apiStatus, apiMessage, model)
+  return fromHttpStatus(response.status, apiStatus, apiMessage, model, apiReason)
 }
 
 /**
@@ -233,9 +247,15 @@ export class GeminiTransport {
           } catch {
             continue
           }
-          const errorPayload = (payload as { error?: { code?: number; status?: string; message?: string } }).error
+          const errorPayload = (payload as { error?: ApiErrorBody }).error
           if (errorPayload) {
-            throw fromHttpStatus(errorPayload.code ?? 500, errorPayload.status, errorPayload.message, params.model)
+            throw fromHttpStatus(
+              errorPayload.code ?? 500,
+              errorPayload.status,
+              errorPayload.message,
+              params.model,
+              reasonOf(errorPayload)
+            )
           }
           const delta = extractStreamDelta(payload)
           if (delta.blockReason) blockedReason = delta.blockReason
@@ -316,9 +336,15 @@ export class GeminiTransport {
       })
       if (!response.ok) throw await toHttpError(response, params.model)
       const payload = (await response.json()) as unknown
-      const errorPayload = (payload as { error?: { code?: number; status?: string; message?: string } }).error
+      const errorPayload = (payload as { error?: ApiErrorBody }).error
       if (errorPayload) {
-        throw fromHttpStatus(errorPayload.code ?? 500, errorPayload.status, errorPayload.message, params.model)
+        throw fromHttpStatus(
+          errorPayload.code ?? 500,
+          errorPayload.status,
+          errorPayload.message,
+          params.model,
+          reasonOf(errorPayload)
+        )
       }
       const delta = extractStreamDelta(payload)
       return {

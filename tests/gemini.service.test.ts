@@ -29,6 +29,7 @@ interface Harness {
     done: StreamDoneEvent[]
     errors: StreamErrorEvent[]
   }
+  calls: { stream: number; single: number }
   cleanup: () => Promise<void>
 }
 
@@ -42,9 +43,16 @@ async function createHarness(
   await Promise.all([conversations.load(), settings.load()])
 
   const events = { deltas: [] as StreamDeltaEvent[], done: [] as StreamDoneEvent[], errors: [] as StreamErrorEvent[] }
+  const calls = { stream: 0, single: 0 }
   const transport = {
-    streamGenerate,
-    generate: async () => ({ text: 'GPTN ready', thought: '' }),
+    streamGenerate: (...args: Parameters<GeminiTransport['streamGenerate']>) => {
+      calls.stream += 1
+      return streamGenerate(...args)
+    },
+    generate: async () => {
+      calls.single += 1
+      return { text: 'A complete non-streamed answer', thought: '' }
+    },
     listModels: async () => [{ id: 'gemini-test', label: 'Gemini Test', source: 'api' as const }]
   } as unknown as GeminiTransport
 
@@ -65,6 +73,7 @@ async function createHarness(
     conversations,
     settings,
     events,
+    calls,
     cleanup: async () => {
       service.stopAll()
       await conversations.flush().catch(() => undefined)
@@ -233,5 +242,80 @@ describe('GeminiService model list', () => {
     const models = await harness.service.listModels()
     expect(models[0].source).toBe('builtin')
     expect(models.some((model) => model.id === 'gemini-test')).toBe(true)
+  })
+})
+
+describe('GeminiService request shaping', () => {
+  it('uses the non-streaming endpoint when streaming is disabled in Settings', async () => {
+    harness = await createHarness(async () => ({ text: 'streamed', thought: '' }))
+    harness.settings.update({ streaming: false })
+    const conversation = harness.conversations.create({ model: 'gemini-test' })
+
+    await harness.service.send({
+      requestId: 'req-single',
+      conversationId: conversation.id,
+      model: 'gemini-test',
+      messages: [message('user', 'One shot please'), message('assistant', '')]
+    })
+
+    expect(harness.calls.stream).toBe(0)
+    expect(harness.calls.single).toBe(1)
+    // The whole answer still arrives as a single delta, so the UI code is identical.
+    expect(harness.events.deltas.map((delta) => delta.text).join('')).toBe('A complete non-streamed answer')
+    expect(harness.events.done[0].text).toBe('A complete non-streamed answer')
+    expect(harness.conversations.get(conversation.id)?.messages[1].state).toBe('complete')
+  })
+
+  it('never overwrites an earlier answer when the history ends with a user message', async () => {
+    harness = await createHarness(async (_params, onChunk) => {
+      onChunk?.({ text: 'New answer', thought: '' })
+      return { text: 'New answer', thought: '' }
+    })
+    const conversation = harness.conversations.create({ model: 'gemini-test' })
+
+    const previous: ChatMessage = {
+      id: 'assistant-previous',
+      role: 'assistant',
+      content: 'The first answer must survive',
+      createdAt: new Date().toISOString(),
+      state: 'complete'
+    }
+    const followUp = message('user', 'Second question')
+
+    await harness.service.send({
+      requestId: 'req-follow-up',
+      conversationId: conversation.id,
+      model: 'gemini-test',
+      // No placeholder at the end: exactly what a retry sends.
+      messages: [message('user', 'First question'), previous, followUp]
+    })
+
+    const stored = harness.conversations.get(conversation.id)
+    expect(stored?.messages.map((item) => item.content)).toEqual([
+      'First question',
+      'The first answer must survive',
+      'Second question',
+      'New answer'
+    ])
+    expect(stored?.messages[1].state).toBe('complete')
+  })
+
+  it('appends a placeholder when no streaming turn is open', async () => {
+    harness = await createHarness(async (_params, onChunk) => {
+      onChunk?.({ text: 'Answer', thought: '' })
+      return { text: 'Answer', thought: '' }
+    })
+    const conversation = harness.conversations.create({ model: 'gemini-test' })
+
+    await harness.service.send({
+      requestId: 'req-append',
+      conversationId: conversation.id,
+      model: 'gemini-test',
+      messages: [message('user', 'Only a user message')]
+    })
+
+    const stored = harness.conversations.get(conversation.id)
+    expect(stored?.messages).toHaveLength(2)
+    expect(stored?.messages[1]).toMatchObject({ role: 'assistant', content: 'Answer', state: 'complete' })
   })
 })

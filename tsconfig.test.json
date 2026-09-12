@@ -45,6 +45,7 @@
     "src/main/**/*.ts",
     "src/renderer/src/**/*.ts",
     "src/renderer/src/**/*.tsx",
+    "scripts/**/*.ts",
     "vite.preview.config.ts"
   ]
 }

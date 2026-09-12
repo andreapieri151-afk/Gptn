@@ -146,38 +146,45 @@ export class GeminiService {
     let lastSave = 0
 
     try {
-      const result = await this.transport.streamGenerate(
-        {
-          apiKey,
-          model: request.model,
-          contents,
-          signal: controller.signal,
-          ...(settings.baseUrl ? { baseUrl: settings.baseUrl } : {}),
-          ...(settings.streaming ? {} : { idleTimeoutMs: 60_000 }),
-          generation: {
-            temperature: settings.temperature,
-            topP: settings.topP,
-            maxOutputTokens: settings.maxOutputTokens,
-            systemInstruction: settings.systemInstruction,
-            safetyOff: settings.safetyMode === 'off'
-          }
-        },
-        (chunk) => {
-          if (chunk.text) {
-            text += chunk.text
-            this.emitter.delta({ requestId: request.requestId, text: chunk.text })
-          }
-          if (chunk.thought) {
-            thought += chunk.thought
-            this.emitter.delta({ requestId: request.requestId, text: '', thought: chunk.thought })
-          }
-          const now = Date.now()
-          if (now - lastSave > SAVE_INTERVAL_MS) {
-            lastSave = now
-            this.persistStreaming(target, text, thought)
-          }
+      const params = {
+        apiKey,
+        model: request.model,
+        contents,
+        signal: controller.signal,
+        ...(settings.baseUrl ? { baseUrl: settings.baseUrl } : {}),
+        generation: {
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxOutputTokens: settings.maxOutputTokens,
+          systemInstruction: settings.systemInstruction,
+          safetyOff: settings.safetyMode === 'off'
         }
-      )
+      }
+
+      const onChunk = (chunk: { text: string; thought: string }): void => {
+        if (chunk.text) {
+          text += chunk.text
+          this.emitter.delta({ requestId: request.requestId, text: chunk.text })
+        }
+        if (chunk.thought) {
+          thought += chunk.thought
+          this.emitter.delta({ requestId: request.requestId, text: '', thought: chunk.thought })
+        }
+        const now = Date.now()
+        if (now - lastSave > SAVE_INTERVAL_MS) {
+          lastSave = now
+          this.persistStreaming(target, text, thought)
+        }
+      }
+
+      // Streaming can be turned off in Settings → General: then the answer is
+      // requested in one shot (no SSE) and delivered as a single delta.
+      const result = settings.streaming
+        ? await this.transport.streamGenerate(params, onChunk)
+        : await this.transport.generate(params).then((single) => {
+            onChunk({ text: single.text, thought: single.thought })
+            return single
+          })
 
       const interrupted = controller.signal.aborted
       text = result.text
@@ -191,7 +198,7 @@ export class GeminiService {
           detail: `Blocked with reason: ${reason}`,
           retryable: true
         })
-        this.failConversation(target, request, blocked, text, startedAt)
+        this.failConversation(target, request, blocked, text)
         return
       }
 
@@ -203,7 +210,7 @@ export class GeminiService {
           detail: result.finishReason ? `finishReason: ${result.finishReason}` : undefined,
           retryable: true
         })
-        this.failConversation(target, request, empty, '', startedAt)
+        this.failConversation(target, request, empty)
         return
       }
 
@@ -257,7 +264,7 @@ export class GeminiService {
         })
         return
       }
-      this.failConversation(target, request, friendly, text, startedAt, thought)
+      this.failConversation(target, request, friendly, text, thought)
     } finally {
       this.active.delete(request.requestId)
     }
@@ -269,12 +276,15 @@ export class GeminiService {
     request: ChatRequest
   ): { conversation: Conversation; assistantId: string } {
     const messages = request.messages.map((message) => ({ ...message }))
-    const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant')
+    // Only the final assistant turn can be the placeholder for this request.
+    // Looking any further back would overwrite an answer already on screen
+    // (for example when a retry sends a history that ends with a user message).
+    const candidate = messages[messages.length - 1]
+    const isPlaceholder = candidate?.role === 'assistant' && candidate.state !== 'complete'
     let assistantId: string
-    if (lastAssistant) {
-      assistantId = lastAssistant.id
-      const index = messages.findIndex((message) => message.id === assistantId)
-      messages[index] = { ...messages[index], content: '', state: 'streaming', model: request.model }
+    if (candidate && isPlaceholder) {
+      assistantId = candidate.id
+      messages[messages.length - 1] = { ...candidate, content: '', state: 'streaming', model: request.model }
     } else {
       assistantId = newId()
       messages.push({
@@ -316,7 +326,6 @@ export class GeminiService {
     request: ChatRequest,
     error: AppError,
     partialText = '',
-    _startedAt = Date.now(),
     thought = ''
   ): void {
     const messageError = error.toMessageError()

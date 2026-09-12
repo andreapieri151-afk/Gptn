@@ -66,12 +66,6 @@ export function registerIpcHandlers(context: IpcContext): void {
     await shell.openExternal(url)
   })
 
-  ipcMain.handle('app:open-path', async (_event, target: unknown) => {
-    if (typeof target !== 'string' || !target) return false
-    const error = await shell.openPath(target)
-    return error === ''
-  })
-
   // ---------------------------------------------------------------- settings
   ipcMain.handle(IPC.settings.get, () => settings.get())
 
@@ -291,13 +285,4 @@ export function registerIpcHandlers(context: IpcContext): void {
     }
   })
 
-  // ------------------------------------------------------------------ window
-  ipcMain.handle(IPC.window.minimize, () => context.getMainWindow()?.minimize())
-  ipcMain.handle(IPC.window.zoom, () => {
-    const window = context.getMainWindow()
-    if (!window) return
-    if (window.isMaximized()) window.unmaximize()
-    else window.maximize()
-  })
-  ipcMain.handle(IPC.window.close, () => context.getMainWindow()?.close())
 }

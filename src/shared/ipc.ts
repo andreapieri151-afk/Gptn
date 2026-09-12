@@ -44,11 +44,6 @@ export const IPC = {
     import: 'data:import',
     revealFolder: 'data:reveal-folder',
     stats: 'data:stats'
-  },
-  window: {
-    minimize: 'window:minimize',
-    zoom: 'window:zoom',
-    close: 'window:close'
   }
 } as const
 

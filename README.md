@@ -52,7 +52,8 @@ stores your API key in the macOS Keychain.
 
 ## Requirements
 
-- macOS 11 or newer (Apple silicon or Intel)
+- macOS 13 Ventura or newer (Apple silicon or Intel) — GPTN 1.0.0 uses Electron 44
+  (Chromium 152), whose minimum supported system is macOS 13
 - Node.js 20+ and npm (only for building from source)
 - A Google Gemini API key — create one in [Google AI Studio](https://aistudio.google.com/apikey)
 
@@ -78,7 +79,7 @@ Useful scripts:
 | `npm test` | Unit + DOM + transport tests (Vitest) |
 | `npm run verify` | typecheck → tests → production build |
 | `npm run build` | Compile main, preload and renderer into `out/` |
-| `npm run icon` | Regenerate `build/icon.png` and `build/icon.iconset` |
+| `npm run icon` | Regenerate the app icon (`build/icon.png`, `.iconset`, `.icns`) |
 | `npm run dist:mac` | Build `GPTN.app` + `.dmg` + `.zip` in `release/` |
 
 ### Browser preview
@@ -91,12 +92,22 @@ Real answers always come from the desktop app.
 ## Building a distributable GPTN.app
 
 ```bash
-npm run dist:mac            # arm64 + x64: GPTN.app, GPTN-1.0.0-arm64.dmg, .zip
-npm run dist:mac:universal  # single universal binary
-npm run dist:dir            # unpacked app only (fast smoke test)
+npm run dist:mac            # GPTN.app + installer for both architectures
+npm run dist:mac:universal  # one universal binary instead of two
+npm run dist:dir            # unpacked GPTN.app only (fast smoke test)
 ```
 
-Artifacts land in `release/`. The first launch of an **unsigned** build requires
+Artifacts land in `release/`:
+
+| File | What it is |
+| --- | --- |
+| `GPTN-1.0.0-arm64.dmg` / `GPTN-1.0.0-x64.dmg` | Drag-and-drop installers (Apple silicon / Intel) |
+| `GPTN-1.0.0-arm64.zip` / `GPTN-1.0.0-x64.zip` | Zipped `GPTN.app` for the same architectures |
+| `GPTN-1.0.0.dmg` / `GPTN-1.0.0.zip` | Same installers after `npm run dist:mac:universal` (renamed by `scripts/rename-artifacts.mjs`) |
+
+`npm run dist:mac` needs network access the first time: electron-builder downloads the official
+Electron binary for the target architecture and caches it in the electron-builder cache directory.
+The app bundle itself contains only `out/` and `package.json` — no sources, tests or `node_modules`. The first launch of an **unsigned** build requires
 right-click → **Open** (or *System Settings → Privacy & Security → Open Anyway*), because macOS
 cannot verify the developer.
 
@@ -128,17 +139,24 @@ Hardened runtime and `build/entitlements.mac.plist` are already configured.
 
 ### CI
 
-`.github/workflows/build-macos.yml` builds on a macOS runner (on tags or manually) and uploads the
-DMG/ZIP as artifacts. Add the signing/notarisation secrets to the repository to get signed builds
-automatically.
+`.github/workflows/build-macos.yml` builds on a macOS runner (on `v*` tags or manually): it runs
+`npm ci`, the typechecks and the tests, then packages `GPTN.app`, the DMG and the ZIP. The installers
+are uploaded as workflow artifacts and, for tag builds, attached to the GitHub Release of that tag.
+Add the signing/notarisation secrets below to the repository to get signed, notarised builds
+automatically; without them the workflow still produces a runnable unsigned build.
 
 ### Icon
 
-`build/icon.png` (1024×1024) is generated from vector code by `npm run icon`, which also writes
-`build/icon.iconset`. On macOS you can turn that into `icon.icns` with:
+The icon is generated from vector code by `npm run icon`, which writes:
+
+- `build/icon.png` — 1024×1024 master;
+- `build/icon.iconset/` — the standard macOS slice set (for designers, and for `iconutil`);
+- `build/icon.icns` — the icon used by the packaged app. GPTN builds this container itself, so
+  packaging never depends on `iconutil` (macOS only) or on a remote icon-conversion download.
 
 ```bash
-iconutil -c icns build/icon.iconset
+npm run icon                      # regenerate everything from scripts/make-icon.mjs
+iconutil -c icns build/icon.iconset   # optional: verify the slices on macOS
 ```
 
 ## Architecture
@@ -193,6 +211,7 @@ UI  →  State (zustand)  →  window.gptn (IPC)  →  GeminiService  →  Gemin
 | “Model unavailable” | Pick another model in Settings → AI, or add the ID under *Custom model IDs* |
 | “Connection problem” | Check your internet connection or VPN/proxy. A proxy can be set under *Advanced → API base URL* |
 | macOS refuses to open the app | Unsigned build: right-click → Open. Signed releases do not have this issue |
+| `npm run dist:mac` fails while downloading | electron-builder needs to fetch the Electron binary from GitHub the first time; check the proxy/firewall and retry |
 
 Logs are written to `~/Library/Application Support/GPTN/logs/gptn.log`; open them from
 **Help → Open Logs Folder**, and **Help → Diagnostics…** copies a summary you can share.

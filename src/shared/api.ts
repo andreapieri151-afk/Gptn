@@ -31,9 +31,8 @@ export interface DataStats {
 export interface GptnApi {
   app: {
     info(): Promise<AppInfo>
+    /** Opens an http(s)/mailto link in the user's default browser. */
     openExternal(url: string): Promise<void>
-    /** Opens a file with the default macOS app. */
-    openPath(path: string): Promise<boolean>
     onCommand(handler: (command: UiCommand) => void): () => void
   }
   settings: {
@@ -74,11 +73,6 @@ export interface GptnApi {
     import(): Promise<{ canceled: boolean; imported: number }>
     revealFolder(): Promise<void>
     stats(): Promise<DataStats>
-  }
-  window: {
-    minimize(): void
-    zoom(): void
-    close(): void
   }
 }
 

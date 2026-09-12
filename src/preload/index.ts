@@ -35,7 +35,6 @@ const api: GptnApi = {
   app: {
     info: () => ipcRenderer.invoke(IPC.app.info) as Promise<AppInfo>,
     openExternal: (url: string) => ipcRenderer.invoke(IPC.app.openExternal, url) as Promise<void>,
-    openPath: (path: string) => ipcRenderer.invoke('app:open-path', path) as Promise<boolean>,
     onCommand: (handler: (command: UiCommand) => void) => subscribe<UiCommand>(IPC.app.navigate, handler)
   },
   settings: {
@@ -78,11 +77,6 @@ const api: GptnApi = {
     import: () => ipcRenderer.invoke(IPC.data.import) as Promise<{ canceled: boolean; imported: number }>,
     revealFolder: () => ipcRenderer.invoke(IPC.data.revealFolder) as Promise<void>,
     stats: () => ipcRenderer.invoke(IPC.data.stats) as Promise<DataStats>
-  },
-  window: {
-    minimize: () => ipcRenderer.send(IPC.window.minimize),
-    zoom: () => ipcRenderer.send(IPC.window.zoom),
-    close: () => ipcRenderer.send(IPC.window.close)
   }
 }
 

@@ -60,6 +60,11 @@ export class WindowStateStore {
     return visible ? state : { width: state.width, height: state.height, maximized: state.maximized }
   }
 
+  /** Persists pending window changes immediately (used when the app quits). */
+  flush(): Promise<void> {
+    return this.store.flush()
+  }
+
   track(window: BrowserWindow): void {
     const save = (): void => {
       if (window.isDestroyed()) return

@@ -49,8 +49,53 @@ function svg(size) {
 </svg>`
 }
 
+const renderCache = new Map()
+
 async function render(size) {
-  return sharp(Buffer.from(svg(size))).resize(size, size).png({ compressionLevel: 9 }).toBuffer()
+  const cached = renderCache.get(size)
+  if (cached) return cached
+  const buffer = await sharp(Buffer.from(svg(size))).resize(size, size).png({ compressionLevel: 9 }).toBuffer()
+  renderCache.set(size, buffer)
+  return buffer
+}
+
+/**
+ * ICNS type codes -> edge length in pixels. Every slice is stored as PNG, which
+ * macOS accepts since 10.7 (GPTN requires 13.0).
+ */
+const ICNS_TYPES = [
+  ['icp4', 16],
+  ['icp5', 32],
+  ['icp6', 64],
+  ['ic07', 128],
+  ['ic08', 256],
+  ['ic09', 512],
+  ['ic10', 1024],
+  ['ic11', 32],
+  ['ic12', 64],
+  ['ic13', 256],
+  ['ic14', 512]
+]
+
+/**
+ * Builds a .icns container by hand so the icon does not depend on `iconutil`
+ * (macOS only) nor on electron-builder's remote icon conversion bundle.
+ */
+async function buildIcns() {
+  const chunks = []
+  for (const [type, size] of ICNS_TYPES) {
+    const png = await render(size)
+    const header = Buffer.alloc(8)
+    header.write(type, 0, 4, 'ascii')
+    header.writeUInt32BE(png.length + 8, 4)
+    chunks.push(header, png)
+  }
+
+  const body = Buffer.concat(chunks)
+  const file = Buffer.alloc(8)
+  file.write('icns', 0, 4, 'ascii')
+  file.writeUInt32BE(body.length + 8, 4)
+  return Buffer.concat([file, body])
 }
 
 async function main() {
@@ -76,7 +121,11 @@ async function main() {
   for (const [size, name] of iconset) {
     await writeFile(join(iconsetDir, name), await render(size))
   }
-  console.log('build/icon.iconset written — run "iconutil -c icns build/icon.iconset" on macOS to get icon.icns')
+  console.log('build/icon.iconset written (for inspection / `iconutil` on macOS)')
+
+  const icns = await buildIcns()
+  await writeFile(join(buildDir, 'icon.icns'), icns)
+  console.log(`build/icon.icns written (${icns.length} bytes, ${ICNS_TYPES.length} slices)`)
 }
 
 await main()

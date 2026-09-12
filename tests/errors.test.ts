@@ -11,6 +11,34 @@ describe('fromHttpStatus', () => {
     expect(error.toMessageError().detail).toContain('INVALID_ARGUMENT')
   })
 
+  it('recognises the real "API key not valid" 400 response from Google', () => {
+    // Body observed from generativelanguage.googleapis.com for a bad key.
+    const error = fromHttpStatus(
+      400,
+      'INVALID_ARGUMENT',
+      'API key not valid. Please pass a valid API key.',
+      'gemini-2.5-flash',
+      'API_KEY_INVALID'
+    )
+    expect(error.code).toBe(ErrorCode.INVALID_API_KEY)
+    expect(error.title).toBe('Invalid API key')
+    expect(error.settingsHint).toBe(true)
+    expect(error.retryable).toBe(false)
+    expect(error.toMessageError().detail).toContain('API_KEY_INVALID')
+  })
+
+  it('detects an invalid key from the message even without details', () => {
+    expect(fromHttpStatus(400, 'INVALID_ARGUMENT', 'API key not valid. Please pass a valid API key.').code).toBe(
+      ErrorCode.INVALID_API_KEY
+    )
+  })
+
+  it('keeps a genuine bad-request 400 as "Something went wrong"', () => {
+    const error = fromHttpStatus(400, 'INVALID_ARGUMENT', 'Request contains an invalid argument.')
+    expect(error.code).toBe(ErrorCode.INVALID_REQUEST)
+    expect(error.title).toBe('Something went wrong')
+  })
+
   it('maps 401/403 to a key problem', () => {
     expect(fromHttpStatus(401, 'UNAUTHENTICATED', 'API key not valid').code).toBe(ErrorCode.INVALID_API_KEY)
     expect(fromHttpStatus(403, 'PERMISSION_DENIED', 'Caller does not have permission').code).toBe(

@@ -11,27 +11,16 @@ import { SecretStore } from './store/secrets'
 import { SettingsRepository } from './store/settings'
 import { WindowStateStore } from './windowState'
 
+// The product name drives the userData folder, so it is set before Electron
+// resolves any path.
 app.setName('GPTN')
 
-const userDataPath = app.getPath('userData')
-const conversations = new ConversationRepository(join(userDataPath, 'conversations.json'))
-const settings = new SettingsRepository(join(userDataPath, 'settings.json'))
-const secrets = new SecretStore(userDataPath)
-const windowState = new WindowStateStore(join(userDataPath, 'window-state.json'))
-
 let mainWindow: BrowserWindow | null = null
-let isQuitting = false
-
-const service = new GeminiService({
-  secrets,
-  conversations,
-  settings,
-  emitter: {
-    delta: (event: StreamDeltaEvent) => send(IPC.chat.delta, event),
-    done: (event: StreamDoneEvent) => send(IPC.chat.done, event),
-    error: (event: StreamErrorEvent) => send(IPC.chat.error, event)
-  }
-})
+let conversations: ConversationRepository
+let settings: SettingsRepository
+let secrets: SecretStore
+let windowState: WindowStateStore
+let service: GeminiService
 
 function send(channel: string, payload: unknown): void {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload)
@@ -60,7 +49,7 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: true,
-      // Renderer stays fully sandboxed; all privileged work happens over IPC.
+      // The renderer stays fully sandboxed; all privileged work happens over IPC.
       webSecurity: true
     }
   })
@@ -83,7 +72,8 @@ function createWindow(): BrowserWindow {
 
   // Keep the webview pinned to the app: external links always open in the browser.
   window.webContents.on('will-navigate', (event, url) => {
-    const isDevServer = !!process.env['ELECTRON_RENDERER_URL'] && url.startsWith(process.env['ELECTRON_RENDERER_URL']!)
+    const isDevServer =
+      !!process.env['ELECTRON_RENDERER_URL'] && url.startsWith(process.env['ELECTRON_RENDERER_URL']!)
     if (!isDevServer && !url.startsWith('file://')) {
       event.preventDefault()
       if (/^https?:/i.test(url)) void shell.openExternal(url)
@@ -98,13 +88,35 @@ function createWindow(): BrowserWindow {
   return window
 }
 
+/** Creates the stores and services once Electron is ready. */
 async function bootstrap(): Promise<void> {
   log.init()
-  await Promise.all([conversations.load(), settings.load(), windowState.load()])
-  log.info('boot', `GPTN ${app.getVersion()} · Electron ${process.versions.electron} · ${process.platform}`)
 
-  const current = settings.get()
-  nativeTheme.themeSource = current.theme
+  const userDataPath = app.getPath('userData')
+  conversations = new ConversationRepository(join(userDataPath, 'conversations.json'))
+  settings = new SettingsRepository(join(userDataPath, 'settings.json'))
+  secrets = new SecretStore(userDataPath)
+  windowState = new WindowStateStore(join(userDataPath, 'window-state.json'))
+
+  await Promise.all([conversations.load(), settings.load(), windowState.load()])
+  log.info(
+    'boot',
+    `GPTN ${app.getVersion()} · Electron ${process.versions.electron} · ${process.platform}/${process.arch}`,
+    `data: ${userDataPath}`
+  )
+
+  nativeTheme.themeSource = settings.get().theme
+
+  service = new GeminiService({
+    secrets,
+    conversations,
+    settings,
+    emitter: {
+      delta: (event: StreamDeltaEvent) => send(IPC.chat.delta, event),
+      done: (event: StreamDoneEvent) => send(IPC.chat.done, event),
+      error: (event: StreamErrorEvent) => send(IPC.chat.error, event)
+    }
+  })
 
   registerIpcHandlers({
     conversations,
@@ -123,11 +135,6 @@ async function bootstrap(): Promise<void> {
   })
 
   mainWindow = createWindow()
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
-    else mainWindow?.show()
-  })
 }
 
 const gotLock = app.requestSingleInstanceLock()
@@ -141,23 +148,27 @@ if (!gotLock) {
     }
   })
 
-  app.whenReady().then(bootstrap).catch((error: unknown) => {
-    log.error('boot', error instanceof Error ? error.message : String(error))
-    app.quit()
-  })
+  app
+    .whenReady()
+    .then(async () => {
+      await bootstrap()
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
+        else mainWindow?.show()
+      })
+    })
+    .catch((error: unknown) => {
+      log.error('boot', error instanceof Error ? error.message : String(error))
+      app.quit()
+    })
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
 
   app.on('before-quit', () => {
-    isQuitting = true
-    service.stopAll()
+    service?.stopAll()
     // Make sure the last messages are on disk before the process exits.
-    void Promise.allSettled([conversations.flush(), settings.flush()])
-  })
-
-  app.on('will-quit', () => {
-    log.info('quit', 'shutting down', { isQuitting })
+    void Promise.allSettled([conversations?.flush(), settings?.flush(), windowState?.flush()])
   })
 }

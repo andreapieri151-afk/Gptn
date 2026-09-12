@@ -22,7 +22,7 @@
     "verify": "npm run typecheck && npm run test && npm run build",
     "start": "electron-vite preview",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
-    "dist:mac:universal": "npm run build && electron-builder --mac --universal --publish never",
+    "dist:mac:universal": "npm run build && electron-builder --mac --universal --publish never && node scripts/rename-artifacts.mjs",
     "dist:dir": "npm run build && electron-builder --mac --dir --publish never",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "icon": "node scripts/make-icon.mjs"

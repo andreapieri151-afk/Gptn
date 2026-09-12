@@ -54,6 +54,8 @@ interface ChatState {
   refreshConversations(): Promise<void>
   refreshModels(force?: boolean): Promise<void>
   openConversation(id: string): Promise<void>
+  /** Resets the view to an empty chat without touching the database. */
+  startDraft(): void
   newChat(): Promise<void>
   sendMessage(content: string): Promise<void>
   stopGeneration(): Promise<void>
@@ -107,6 +109,12 @@ const DEFAULT_SETTINGS_FALLBACK: Settings = {
   lastConversationId: null
 }
 
+/** Strips Electron's IPC wrapper from a rejected invoke so toasts stay readable. */
+export function readableError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.replace(/^Error invoking remote method '[^']+':\s*/, '').replace(/^Error:\s*/, '')
+}
+
 function newMessage(role: ChatMessage['role'], content: string, state: ChatMessage['state'] = 'complete'): ChatMessage {
   return { id: genId(), role, content, createdAt: new Date().toISOString(), state }
 }
@@ -156,7 +164,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ready: true
     })
 
-    // Restore the previous session: last conversation, or restore an empty draft.
+    // Restore the previous session. A launch never writes to the database:
+    // a new chat only becomes a stored conversation when it has content.
     const lastId = settings.lastConversationId
     if (settings.startBehavior === 'restore-last' && lastId) {
       const conversation = await api.conversations.get(lastId)
@@ -165,7 +174,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         return
       }
     }
-    await get().newChat()
+    get().startDraft()
   },
 
   async refreshConversations() {
@@ -204,19 +213,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  async newChat() {
-    if (get().requestId) await get().stopGeneration()
+  /** Opens an empty, unsaved chat: it is persisted with the first message. */
+  startDraft() {
     const settings = get().settings ?? DEFAULT_SETTINGS_FALLBACK
-    const conversation = await api.conversations.create({ model: settings.model })
     set({
-      activeId: conversation.id,
+      activeId: null,
       messages: [],
-      activeModel: conversation.model,
+      activeModel: settings.model,
+      requestId: null,
+      streamingMessageId: null,
+      generatingSince: null,
       lastError: null
     })
-    await get().refreshConversations()
-    const updated = await api.settings.update({ lastConversationId: conversation.id })
-    set({ settings: updated })
+  },
+
+  async newChat() {
+    if (get().requestId) await get().stopGeneration()
+    get().startDraft()
   },
 
   async sendMessage(content) {
@@ -225,9 +238,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     let conversationId = get().activeId
     if (!conversationId) {
+      // First message of a draft: this is where the conversation is created.
       const conversation = await api.conversations.create({ model: get().activeModel })
       conversationId = conversation.id
       set({ activeId: conversation.id, messages: [] })
+      const updated = await api.settings.update({ lastConversationId: conversation.id })
+      set({ settings: updated })
+      await get().refreshConversations()
     }
 
     const userMessage = newMessage('user', text)
@@ -266,7 +283,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           code: 'IPC',
           title: 'Message not sent',
           message: 'GPTN could not reach its local service. Restart the app and try again.',
-          detail: (error as Error).message,
+          detail: readableError(error),
           retryable: true
         }
       })
@@ -304,7 +321,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (get().activeId === id) {
       const remaining = await api.conversations.list()
       if (remaining.length) await get().openConversation(remaining[0].id)
-      else await get().newChat()
+      else get().startDraft()
     }
     await get().refreshConversations()
   },
@@ -313,7 +330,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (get().requestId) await get().stopGeneration()
     const removed = await api.conversations.removeAll()
     await get().refreshConversations()
-    await get().newChat()
+    get().startDraft()
+    const updated = await api.settings.update({ lastConversationId: null })
+    set({ settings: updated })
     get().pushToast(`${removed} conversation${removed === 1 ? '' : 's'} deleted`, 'success')
   },
 
@@ -334,8 +353,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await get().refreshModels(true)
       return status
     } catch (error) {
-      const detail = (error as Error).message
-      get().pushToast(detail, 'error')
+      get().pushToast(readableError(error), 'error')
       return null
     }
   },
@@ -358,7 +376,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           code: 'UNKNOWN',
           title: 'Something went wrong',
           message: 'GPTN could not run the connection test. Make sure the app is running from the desktop build.',
-          detail: (error as Error).message,
+          detail: readableError(error),
           retryable: true
         }
       }
@@ -372,7 +390,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (result.canceled) return
       get().pushToast(`Exported ${result.count} conversation${result.count === 1 ? '' : 's'}`, 'success')
     } catch (error) {
-      get().pushToast(`Export failed: ${(error as Error).message}`, 'error')
+      get().pushToast(`Export failed: ${readableError(error)}`, 'error')
     }
   },
 
@@ -383,8 +401,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await get().refreshConversations()
       get().pushToast(`Imported ${result.imported} conversation${result.imported === 1 ? '' : 's'}`, 'success')
     } catch (error) {
-      const message = (error as Error).message.replace(/^Error invoking remote method '[^']+':\s*/, '')
-      get().pushToast(message, 'error')
+      get().pushToast(readableError(error), 'error')
     }
   },
 
@@ -453,8 +470,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               content: text || message.content,
               state: interrupted ? ('interrupted' as const) : ('complete' as const),
               ...(usage ? { usage } : {}),
-              ...(thought ? { thought } : {}),
-              ...(finishReason ? { error: undefined } : {})
+              ...(thought ? { thought } : {})
             }
           : message
       ),

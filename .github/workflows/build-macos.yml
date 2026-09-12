@@ -6,6 +6,10 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Needed to attach the DMG/ZIP to the GitHub Release of the tag.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-14
@@ -43,3 +47,15 @@ jobs:
             release/*.dmg
             release/*.zip
           if-no-files-found: error
+
+      - name: Attach installers to the GitHub Release
+        # Only for tag builds, and only if the release does not exist yet: the
+        # changelog written by hand is never overwritten.
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --title "GPTN $GITHUB_REF_NAME" --generate-notes
+          fi
+          gh release upload "$GITHUB_REF_NAME" release/*.dmg release/*.zip --clobber

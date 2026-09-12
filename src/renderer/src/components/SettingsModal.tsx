@@ -176,7 +176,8 @@ function AiSection(): ReactElement {
     if (status?.hasApiKey) {
       setKeyDraft('')
       pushToast('API key saved', 'success')
-      void test(value)
+      // Verify the key against the selected model (never pass the key itself).
+      void test()
     }
   }
 

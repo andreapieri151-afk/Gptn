@@ -139,6 +139,28 @@ describe('GeminiTransport.streamGenerate', () => {
     })
   })
 
+  it('maps a rejected API key (400 API_KEY_INVALID) to the "Invalid API key" copy', async () => {
+    handler = (_request, response) => {
+      response.writeHead(400, { 'Content-Type': 'application/json' })
+      response.end(
+        JSON.stringify({
+          error: {
+            code: 400,
+            status: 'INVALID_ARGUMENT',
+            message: 'API key not valid. Please pass a valid API key.',
+            details: [{ reason: 'API_KEY_INVALID', domain: 'googleapis.com' }]
+          }
+        })
+      )
+    }
+
+    await expect(new GeminiTransport({ baseUrl }).streamGenerate(request)).rejects.toMatchObject({
+      code: ErrorCode.INVALID_API_KEY,
+      title: 'Invalid API key',
+      settingsHint: true
+    })
+  })
+
   it('maps HTTP 400 to the friendly "Something went wrong" copy', async () => {
     handler = (_request, response) => {
       response.writeHead(400, { 'Content-Type': 'application/json' })

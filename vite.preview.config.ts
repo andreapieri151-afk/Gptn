@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { productionCspPlugin } from './scripts/plugins/csp'
 
 /**
  * Browser preview of the GPTN interface.
@@ -13,7 +14,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   root: 'src/renderer',
   base: './',
-  plugins: [react()],
+  plugins: [react(), productionCspPlugin()],
   resolve: {
     alias: {
       '@shared': resolve('src/shared'),

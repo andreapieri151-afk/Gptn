@@ -51,13 +51,38 @@ afterEach(() => {
 })
 
 describe('renderer store', () => {
-  it('bootstraps with settings, models and a fresh conversation', () => {
+  it('bootstraps with settings and models without writing to the database', () => {
     const state = useChatStore.getState()
     expect(state.ready).toBe(true)
-    expect(state.activeId).not.toBeNull()
     expect(state.messages).toHaveLength(0)
     expect(state.models.length).toBeGreaterThan(0)
     expect(state.activeModel).toBe('gemini-2.5-flash')
+    // Lauching (or pressing ⌘N) must not litter the history with empty chats.
+    expect(state.activeId).toBeNull()
+    expect(platform.conversations).toHaveLength(0)
+  })
+
+  it('creates the conversation only when the first message is sent', async () => {
+    await useChatStore.getState().newChat()
+    expect(platform.conversations).toHaveLength(0)
+    expect(useChatStore.getState().activeId).toBeNull()
+
+    await useChatStore.getState().sendMessage('Prima domanda')
+    expect(platform.conversations).toHaveLength(1)
+    expect(useChatStore.getState().activeId).toBe(platform.conversations[0].id)
+    // A second message reuses the same conversation.
+    const requestId = useChatStore.getState().requestId as string
+    platform.emitDone({
+      requestId,
+      conversationId: platform.conversations[0].id,
+      text: 'ok',
+      model: 'gemini-2.5-flash',
+      durationMs: 10,
+      interrupted: false
+    })
+    await wait()
+    await useChatStore.getState().sendMessage('Seconda domanda')
+    expect(platform.conversations).toHaveLength(1)
   })
 
   it('optimistically adds the user turn and streams the answer into the last bubble', async () => {
@@ -206,23 +231,29 @@ describe('renderer store', () => {
   it('creates a new chat, renames and deletes conversations', async () => {
     await useChatStore.getState().sendMessage('First chat')
     const firstId = useChatStore.getState().activeId as string
+    expect(platform.conversations).toHaveLength(1)
 
     await useChatStore.getState().renameConversation(firstId, 'Renamed chat')
     expect(useChatStore.getState().conversations[0].title).toBe('Renamed chat')
 
     await useChatStore.getState().newChat()
-    expect(useChatStore.getState().activeId).not.toBe(firstId)
+    expect(useChatStore.getState().activeId).toBeNull()
     expect(useChatStore.getState().messages).toHaveLength(0)
+    expect(platform.conversations).toHaveLength(1)
 
-    await useChatStore.getState().deleteConversation(useChatStore.getState().activeId as string)
-    expect(useChatStore.getState().conversations.map((conversation) => conversation.id)).toEqual([firstId])
-    expect(useChatStore.getState().activeId).not.toBeNull()
+    // Deleting the only conversation leaves an empty draft, ready to type into.
+    await useChatStore.getState().deleteConversation(firstId)
+    expect(useChatStore.getState().conversations).toHaveLength(0)
+    expect(useChatStore.getState().activeId).toBeNull()
+    expect(useChatStore.getState().messages).toHaveLength(0)
   })
 
   it('reacts to native menu commands', async () => {
+    await useChatStore.getState().sendMessage('Keep me')
     const before = useChatStore.getState().activeId
     platform.emitCommand('ui:new-chat')
     await wait()
+    expect(useChatStore.getState().activeId).toBeNull()
     expect(useChatStore.getState().activeId).not.toBe(before)
 
     platform.emitCommand('ui:settings')

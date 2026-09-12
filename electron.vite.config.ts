@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import { productionCspPlugin } from './scripts/plugins/csp'
 
 const shared = resolve('src/shared')
 
@@ -25,7 +26,7 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
-    plugins: [react()],
+    plugins: [react(), productionCspPlugin()],
     resolve: {
       alias: { '@shared': shared, '@renderer': resolve('src/renderer/src') }
     },
