@@ -48,11 +48,9 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Report packaging failure
-        # A failing packaging step is otherwise invisible when the raw job log
-        # cannot be downloaded: the tail of the log becomes a job annotation.
+        # The tail of the packaging log becomes a job annotation, so a failure is
+        # visible straight from the checks API (and in the run summary).
         if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           echo "Node $(node -v) / npm $(npm -v)"
           echo "--- release/ ---"
@@ -64,11 +62,6 @@ jobs:
               escaped="${line//'%'/'%25'}"
               echo "::error title=dist:mac::${escaped}"
             done
-            # The raw job log is not always downloadable: publish the tail where it
-            # can always be read (commit comments are part of the public API).
-            tail -c 60000 dist.log > dist-tail.txt
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
-              -f body="$(printf 'dist:mac failed on %s (%s)\n\n```\n' "${GITHUB_REF_NAME}" "$(node -v)" ; cat dist-tail.txt ; printf '\n```\n')" || true
           else
             echo "::error title=dist:mac::no dist.log produced"
           fi
