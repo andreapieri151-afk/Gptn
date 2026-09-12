@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+release/
+.DS_Store
+*.log
+npm-debug.log*
+.vite/
+coverage/
+.electron-builder-cache/
+# local secrets / env (never commit real API keys)
+.env
+.env.local
+*.local
+*.tsbuildinfo

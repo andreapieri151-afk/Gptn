@@ -1,0 +1,45 @@
+name: Build macOS app
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck and tests
+        run: npm run typecheck && npm test
+
+      - name: Build GPTN.app and DMG
+        # With the signing secrets configured the app is signed and notarised;
+        # without them the workflow still produces a runnable (unsigned) build.
+        run: npm run dist:mac
+        env:
+          # Optional: add these repository secrets to produce signed, notarised builds.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GPTN-macos
+          path: |
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: error

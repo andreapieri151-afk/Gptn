@@ -1,0 +1,63 @@
+appId: com.gptn.desktop
+productName: GPTN
+copyright: © 2026 GPTN
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+
+extraMetadata:
+  main: out/main/index.js
+
+asar: true
+npmRebuild: false
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.png
+  darkModeSupport: true
+  minimumSystemVersion: '11.0'
+  # Hardened runtime is required for notarisation; entitlements add network
+  # access and the JIT permissions Electron needs.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Set to true (or use `npm run dist:mac:signed`) once a Developer ID
+  # certificate and notarisation credentials are available.
+  notarize: false
+  extendInfo:
+    NSHumanReadableCopyright: '© 2026 GPTN'
+    LSApplicationCategoryType: public.app-category.productivity
+    NSSupportsAutomaticGraphicsSwitching: true
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+
+dmg:
+  title: GPTN ${version}
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  window:
+    width: 560
+    height: 380
+  contents:
+    - x: 150
+      y: 190
+      type: file
+    - x: 410
+      y: 190
+      type: link
+      path: /Applications
+
+afterSign: scripts/notarize.cjs
