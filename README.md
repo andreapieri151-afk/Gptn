@@ -212,6 +212,7 @@ UI  →  State (zustand)  →  window.gptn (IPC)  →  GeminiService  →  Gemin
 | “Connection problem” | Check your internet connection or VPN/proxy. A proxy can be set under *Advanced → API base URL* |
 | macOS refuses to open the app | Unsigned build: right-click → Open. Signed releases do not have this issue |
 | `npm run dist:mac` fails while downloading | electron-builder needs to fetch the Electron binary from GitHub the first time; check the proxy/firewall and retry |
+| electron-builder fails with `<project folder> not a file` | An **empty** `CSC_LINK` variable is set in your shell (electron-builder reads it as a certificate path); unset it or point it to a valid `.p12` |
 
 Logs are written to `~/Library/Application Support/GPTN/logs/gptn.log`; open them from
 **Help → Open Logs Folder**, and **Help → Diagnostics…** copies a summary you can share.

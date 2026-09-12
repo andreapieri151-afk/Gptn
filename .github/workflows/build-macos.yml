@@ -32,6 +32,12 @@ jobs:
         # without them the workflow still produces a runnable (unsigned) build.
         run: |
           set -o pipefail
+          # GitHub passes secrets that are not configured as empty strings, and
+          # electron-builder treats an empty CSC_LINK as a certificate path
+          # ("<project> not a file"). Unset them so an unsigned build works.
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then unset "$name"; fi
+          done
           npm run dist:mac 2>&1 | tee dist.log
         env:
           # Optional: add these repository secrets to produce signed, notarised builds.
