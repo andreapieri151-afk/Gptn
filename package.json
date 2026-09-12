@@ -2,7 +2,7 @@
   "name": "gptn",
   "productName": "GPTN",
   "version": "1.0.0",
-  "description": "GPTN \u2014 A modern Gemini-powered AI desktop app for macOS",
+  "description": "A small, calm desktop client for Google Gemini on macOS. No accounts, no server: your API key lives in the Keychain and your conversations stay on your Mac.",
   "author": "GPTN",
   "license": "MIT",
   "homepage": "https://github.com/andreapieri151-afk/Gptn",

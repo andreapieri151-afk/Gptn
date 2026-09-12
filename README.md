@@ -1,10 +1,7 @@
 # GPTN
 
-**A modern, Gemini-powered AI desktop app for macOS.**
-
-GPTN is a real desktop application — not a mockup — built with Electron, React and TypeScript.
-It talks to Google Gemini directly from the main process, keeps every conversation on your Mac and
-stores your API key in the macOS Keychain.
+A small, calm desktop client for Google Gemini. It sits in your Dock, keeps your conversations on
+your own disk, keeps your API key in the Keychain, and otherwise stays out of the way while you type.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -21,143 +18,190 @@ stores your API key in the macOS Keychain.
 └──────────────┴───────────────────────────────────────────┘
 ```
 
-## Features
+## What is GPTN?
 
-**Chat**
-- Streaming answers with a discreet `Generating…` state and a **Stop** button that keeps the partial text
-- Markdown: headings, lists, quotes, tables (GFM), links opened in your browser
-- Code blocks with language label, syntax highlighting and one-click **Copy**
-- Copy an answer, regenerate it, or retry after a failure
-- `Enter` sends, `Shift + Enter` adds a line
-- Conversation titles derived from the first message; rename or delete from the sidebar
+I wanted a Gemini client that felt like a Mac app rather than a browser tab with extra steps. So GPTN
+is just a window: a sidebar on the left, a text field at the bottom, ⌘N for a new chat, ⌘, for
+settings, no account to create and no sign-in screen. You paste your own Gemini API key once and it
+stays on your machine. There is no GPTN server in the middle — nothing is proxied, and nobody but you
+and Google ever sees a conversation.
 
-**Desktop experience**
-- Native macOS menu bar (File / Edit / View / Window / Help), traffic-light window, drag-anywhere title bar
-- Light and Dark mode following the system, or pinned in Settings
-- Resizable window that remembers its size and position; resizable sidebar
-- Shortcuts: `⌘N` new chat · `⌘K` search · `⌘,` settings · `⌘B` sidebar · `⌘⇧C` copy last answer · `Esc` stop
-- Very light animations, Retina-ready typography, native font stack
+It's built with Electron, React and TypeScript, which means there's a web engine underneath and I'm
+not going to pretend otherwise. What I did care about is that it behaves like a real Mac app: the
+menus are the real macOS menus, the window has proper traffic lights and remembers its size and
+position, Dark and Light mode follow the system, and nothing in the interface animates unless it's
+telling you something.
 
-**AI layer**
-- Gemini REST API used directly from the main process (streaming via SSE)
-- Model picker fed by the API (`models.list`), plus curated defaults and custom model IDs
-- Configurable temperature, top-p, max output tokens, system instruction and safety mode
-- Optional custom API base URL for proxies or enterprise gateways
-- Plain-language errors with an **Open Settings** shortcut and technical details behind a disclosure
+The other thing I cared about is that the boring paths feel finished. When something goes wrong you
+get "Invalid API key" with a button that takes you to the setting that fixes it, not a wall of JSON.
+When you press Stop you keep the part of the answer that already arrived. If you quit halfway through
+an answer, your history is still there when you come back.
 
-**Data**
-- Conversations stored locally in `~/Library/Application Support/GPTN/conversations.json` (atomic writes + automatic backup recovery)
-- API key encrypted with the macOS Keychain through Electron `safeStorage`
-- Export history as Markdown or JSON, import a JSON backup, delete everything from Settings
+## What it does
+
+**Talking to Gemini**
+
+- Answers stream in as they're written, behind a quiet "Generating…", with a **Stop** button that
+  keeps the partial text. If you'd rather wait for whole answers, turn streaming off in Settings.
+- Models come from your key, not from a hardcoded list — GPTN asks the API what's available and lets
+  you pick, or type a custom model ID. Temperature, top-p, max output tokens, system instruction and
+  safety mode all live in Settings → AI.
+- Markdown is rendered properly: headings, lists, quotes, tables, and code blocks with the language
+  label, syntax colours and a Copy button. Any answer can be copied, or asked again.
+- Enter sends, Shift + Enter starts a new line.
+
+**Your conversations**
+
+- They're saved locally and restored the next time you open the app. The title comes from your first
+  message; you can rename or delete anything from the sidebar.
+- ⌘K searches your history, ⌘N starts a fresh chat, Esc stops an answer that's running.
+- Export everything as Markdown or JSON, import a JSON backup, or wipe it all from Settings → Data.
+
+**Small things**
+
+- Light, Dark, or follow the system.
+- The sidebar is resizable, the window remembers where you left it.
+- Real macOS menu bar with the usual roles (⌘, ⌘H, ⌘Q…), plus Help → Diagnostics if you ever need to
+  report something.
+- Logs stay in the app's data folder, where you'd expect them.
+
+## What it isn't
+
+- Not a ChatGPT clone and not affiliated with any AI company. The name, icon and interface are
+  original; Gemini is Google's, I just talk to their API.
+- Not a service. No accounts, no sync between Macs, no mobile app, no share links.
+- Not a browser wrapper: the UI has no access to Node, to your files, or to your API key.
+- Not everything. There are no file attachments, no team workspaces, no agents. It's a good place to
+  think with a model, and that's the whole ambition.
 
 ## Requirements
 
-- macOS 13 Ventura or newer (Apple silicon or Intel) — GPTN 1.0.0 uses Electron 44
-  (Chromium 152), whose minimum supported system is macOS 13
-- Node.js 20+ and npm (only for building from source)
-- A Google Gemini API key — create one in [Google AI Studio](https://aistudio.google.com/apikey)
+- macOS 13 Ventura or newer, Apple silicon or Intel. (GPTN 1.0.0 ships Electron 44 / Chromium 152,
+  and that's the oldest macOS it supports — installing it on anything older would just fail to launch.)
+- A Google Gemini API key.
+- Node.js 20+ and npm, only if you want to build it yourself.
 
-## Getting started (development)
+## Install
+
+1. Grab `GPTN-1.0.0-arm64.dmg` (Apple silicon) or `GPTN-1.0.0-x64.dmg` (Intel) from the
+   [latest release](https://github.com/andreapieri151-afk/Gptn/releases/latest).
+2. Open the DMG and drag **GPTN** into Applications.
+3. The first time, right-click the app and choose **Open**, then **Open** again. These builds aren't
+   signed with an Apple Developer ID yet, so macOS wants to ask once. After that it opens normally.
+
+Then add your API key, below.
+
+## Your Gemini API key
+
+GPTN doesn't ship with a key, and it never will — it uses yours.
+
+1. Create one in [Google AI Studio](https://aistudio.google.com/apikey). The free tier is enough to
+   try it out.
+2. In GPTN, open **Settings → AI / Gemini**, paste the key and hit **Save**. GPTN immediately makes a
+   real request and tells you how long it took, so you find out right away whether it works.
+3. On a proxied or enterprise network you can point GPTN at a different base URL on the same screen.
+
+Where the key ends up: the macOS Keychain, via Electron's `safeStorage`, encrypted with a key only
+your login session can unlock. It is never written to the repository, never written to the logs, and
+never sent anywhere except Google.
+
+## Development
 
 ```bash
 git clone https://github.com/andreapieri151-afk/Gptn.git
 cd Gptn
 npm install
-npm run dev          # launches Electron with hot reload
+npm run dev          # Electron with hot reload
 ```
-
-Then open **Settings → AI / Gemini**, paste your API key and press **Save**.
-GPTN immediately runs a real request to Gemini and reports the latency.
-
-Useful scripts:
 
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Run the app with hot reload |
-| `npm run dev:preview` | Serve the interface in a browser (see “Browser preview”) |
+| `npm run dev:preview` | Serve the interface in a browser (see below) |
 | `npm run typecheck` | TypeScript check for main, preload, renderer and tests |
-| `npm test` | Unit + DOM + transport tests (Vitest) |
-| `npm run verify` | typecheck → tests → production build |
+| `npm test` | Unit, DOM and transport tests (Vitest) |
+| `npm run verify` | typecheck → tests → production build (what CI runs) |
 | `npm run build` | Compile main, preload and renderer into `out/` |
 | `npm run icon` | Regenerate the app icon (`build/icon.png`, `.iconset`, `.icns`) |
-| `npm run dist:mac` | Build `GPTN.app` + `.dmg` + `.zip` in `release/` |
+| `npm run dist:mac` | Build `GPTN.app` + `.dmg` + `.zip` into `release/` |
 
-### Browser preview
+`npm run dev:preview` serves the same interface at <http://localhost:5273>. It's only for looking at
+layout and interactions: outside Electron there's no Keychain and no Gemini, so the app switches to a
+clearly labelled **Preview** mode with scripted answers. Real answers only ever come from the desktop
+app.
 
-`npm run dev:preview` serves the same interface in a browser at <http://localhost:5273>.
-This exists only to review layout and interactions: outside Electron there is no Keychain and no
-Gemini access, so GPTN switches to a clearly labelled **Preview** mode with scripted answers.
-Real answers always come from the desktop app.
-
-## Building a distributable GPTN.app
+## Building GPTN.app
 
 ```bash
-npm run dist:mac            # GPTN.app + installer for both architectures
+npm run dist:mac            # GPTN.app + installers for both architectures
 npm run dist:mac:universal  # one universal binary instead of two
 npm run dist:dir            # unpacked GPTN.app only (fast smoke test)
 ```
 
-Artifacts land in `release/`:
+Everything lands in `release/`:
 
 | File | What it is |
 | --- | --- |
 | `GPTN-1.0.0-arm64.dmg` / `GPTN-1.0.0-x64.dmg` | Drag-and-drop installers (Apple silicon / Intel) |
 | `GPTN-1.0.0-arm64.zip` / `GPTN-1.0.0-x64.zip` | Zipped `GPTN.app` for the same architectures |
-| `GPTN-1.0.0.dmg` / `GPTN-1.0.0.zip` | Same installers after `npm run dist:mac:universal` (renamed by `scripts/rename-artifacts.mjs`) |
+| `GPTN-1.0.0.dmg` / `GPTN-1.0.0.zip` | The same installers from `dist:mac:universal`, renamed by `scripts/rename-artifacts.mjs` |
 
-`npm run dist:mac` needs network access the first time: electron-builder downloads the official
-Electron binary for the target architecture and caches it in the electron-builder cache directory.
-The app bundle itself contains only `out/` and `package.json` — no sources, tests or `node_modules`. The first launch of an **unsigned** build requires
-right-click → **Open** (or *System Settings → Privacy & Security → Open Anyway*), because macOS
-cannot verify the developer.
+The first `dist:mac` needs internet: electron-builder downloads the official Electron binary for the
+target architecture and caches it. Inside the app bundle there's only `out/` and `package.json` — no
+sources, no tests, no `node_modules`. Because the build is unsigned, the first launch needs
+right-click → **Open** (or *System Settings → Privacy & Security → Open Anyway*).
 
-### Signing and notarising (Apple Developer ID)
+### Signing and notarising
 
-GPTN ships ready for a signed, notarised distribution:
+GPTN is already wired for a signed, notarised distribution — the credentials just aren't in the
+repository, by design.
 
-1. Export your **Developer ID Application** certificate as a `.p12` and export the password:
-   ```bash
-   export CSC_LINK=/path/to/developer-id.p12
-   export CSC_KEY_PASSWORD='your-p12-password'
-   ```
-2. Provide notarisation credentials (app-specific password from <https://appleid.apple.com>):
-   ```bash
-   export APPLE_ID='you@example.com'
-   export APPLE_APP_SPECIFIC_PASSWORD='xxxx-xxxx-xxxx-xxxx'
-   export APPLE_TEAM_ID='ABCDE12345'
-   ```
-3. Build: when all three variables are present the `afterSign` hook notarises the app before the
-   DMG is written.
-   ```bash
-   export CSC_LINK=... CSC_KEY_PASSWORD=... APPLE_ID=... APPLE_APP_SPECIFIC_PASSWORD=... APPLE_TEAM_ID=...
-   npm run dist:mac
-   ```
+```bash
+# 1. Your Developer ID Application certificate, exported as a .p12
+export CSC_LINK=/path/to/developer-id.p12
+export CSC_KEY_PASSWORD='your-p12-password'
 
-`scripts/notarize.cjs` (the electron-builder `afterSign` hook) submits the app to Apple and waits for
-the result; when the credentials are missing it skips notarisation and explains what to set.
-Hardened runtime and `build/entitlements.mac.plist` are already configured.
+# 2. Notarisation credentials (app-specific password from appleid.apple.com)
+export APPLE_ID='you@example.com'
+export APPLE_APP_SPECIFIC_PASSWORD='xxxx-xxxx-xxxx-xxxx'
+export APPLE_TEAM_ID='ABCDE12345'
 
-### CI
+# 3. Build: the afterSign hook notarises the app before the DMG is written
+npm run dist:mac
+```
 
-`.github/workflows/build-macos.yml` builds on a macOS runner (on `v*` tags or manually): it runs
-`npm ci`, the typechecks and the tests, then packages `GPTN.app`, the DMG and the ZIP. The installers
-are uploaded as workflow artifacts and, for tag builds, attached to the GitHub Release of that tag.
-Add the signing/notarisation secrets below to the repository to get signed, notarised builds
-automatically; without them the workflow still produces a runnable unsigned build.
+`scripts/notarize.cjs` submits the app to Apple and waits for the result; with no credentials it
+prints why it skipped and the build carries on unsigned. Hardened runtime and
+`build/entitlements.mac.plist` are configured already.
+
+One gotcha worth knowing: an **empty** `CSC_LINK` in your shell is worse than none at all, because
+electron-builder reads it as a certificate path and fails with `<project folder> not a file`. Unset it
+if you're not signing.
+
+### Continuous integration
+
+`.github/workflows/build-macos.yml` runs on every `v*` tag (and manually): `npm ci`, typecheck, tests,
+then packaging. The installers are uploaded as workflow artifacts and attached to the GitHub Release
+of the tag. Add the secrets above to the repository and those builds come out signed and notarised
+automatically; without them you still get a working unsigned app.
 
 ### Icon
 
-The icon is generated from vector code by `npm run icon`, which writes:
+`npm run icon` writes the icon from vector code: `build/icon.png` (1024×1024 master),
+`build/icon.iconset/` (the standard macOS slices, handy for designers and for `iconutil`) and
+`build/icon.icns`, which is what the packaged app uses. GPTN builds that ICNS container itself so
+packaging never depends on `iconutil` being installed or on a remote icon-conversion download.
 
-- `build/icon.png` — 1024×1024 master;
-- `build/icon.iconset/` — the standard macOS slice set (for designers, and for `iconutil`);
-- `build/icon.icns` — the icon used by the packaged app. GPTN builds this container itself, so
-  packaging never depends on `iconutil` (macOS only) or on a remote icon-conversion download.
+## Security and privacy
 
-```bash
-npm run icon                      # regenerate everything from scripts/make-icon.mjs
-iconutil -c icns build/icon.iconset   # optional: verify the slices on macOS
-```
+- Conversations, settings and window state never leave your Mac.
+- The API key is encrypted through `safeStorage` (macOS Keychain) and decrypted only in the main
+  process, only to sign a request to Google.
+- The renderer is sandboxed with `contextIsolation` on, `nodeIntegration` off and a strict
+  Content-Security-Policy; it has no access to Node, to the filesystem or to the key. The IPC surface
+  is limited to the operations the UI actually uses.
+- The renderer can't reach the network. The only outbound traffic is the Gemini request made by the
+  main process, plus the links you explicitly open — those open in your browser, not in the app.
 
 ## Architecture
 
@@ -180,48 +224,37 @@ src/
    └─ styles/         Design tokens, layout, syntax highlighting theme
 ```
 
-Separation of concerns:
-
 ```
 UI  →  State (zustand)  →  window.gptn (IPC)  →  GeminiService  →  Gemini API
                                              └→  Persistence     →  Local JSON + Keychain
 ```
 
-- No API call lives in a component: components dispatch store actions, the store calls the bridge.
-- All privileged work (network, disk, Keychain, dialogs) happens in the main process; the renderer is
-  sandboxed with `contextIsolation`, no Node integration and a strict CSP.
-- Failures are translated in one place (`src/shared/errors.ts`) into human messages, so the UI never
-  shows raw `HTTP 400 INVALID_ARGUMENT` text in the headline.
-
-## Privacy
-
-- Conversations, settings and window state never leave your Mac.
-- The API key is encrypted with `safeStorage` (macOS Keychain) and only decrypted in the main process
-  to sign requests to Google.
-- The renderer cannot reach the internet: the only outbound traffic is the Gemini request made by the
-  main process, plus the links you explicitly open.
+No component ever calls the API: components dispatch store actions, the store calls the bridge. All
+privileged work (network, disk, Keychain, dialogs) happens in the main process. Failures are
+translated in one place, `src/shared/errors.ts`, so the UI shows a sentence instead of
+`HTTP 400 INVALID_ARGUMENT`.
 
 ## Troubleshooting
 
 | Symptom | What to do |
 | --- | --- |
-| “No API key configured” | Settings → AI / Gemini → paste the key → **Save** (GPTN tests it immediately) |
-| “Invalid API key” | Check the key in AI Studio; make sure the Generative Language API is enabled for the project |
-| “Too many requests” / quota | Wait for the limit to reset, or select a lighter model such as Gemini 2.5 Flash Lite |
-| “Model unavailable” | Pick another model in Settings → AI, or add the ID under *Custom model IDs* |
-| “Connection problem” | Check your internet connection or VPN/proxy. A proxy can be set under *Advanced → API base URL* |
-| macOS refuses to open the app | Unsigned build: right-click → Open. Signed releases do not have this issue |
-| `npm run dist:mac` fails while downloading | electron-builder needs to fetch the Electron binary from GitHub the first time; check the proxy/firewall and retry |
-| electron-builder fails with `<project folder> not a file` | An **empty** `CSC_LINK` variable is set in your shell (electron-builder reads it as a certificate path); unset it or point it to a valid `.p12` |
+| "No API key configured" | Settings → AI / Gemini → paste the key → **Save** (GPTN tests it right away) |
+| "Invalid API key" | Check the key in AI Studio, and that the Generative Language API is enabled for the project |
+| "Too many requests" / quota | Wait for the limit to reset, or switch to a lighter model such as Gemini 2.5 Flash Lite |
+| "Model unavailable" | Pick another model in Settings → AI, or add the ID under *Custom model IDs* |
+| "Connection problem" | Check your connection, VPN or proxy. A proxy goes under *Advanced → API base URL* |
+| macOS refuses to open the app | Unsigned build: right-click → Open. Signed releases don't have this problem |
+| `npm run dist:mac` fails while downloading | electron-builder fetches the Electron binary from GitHub the first time; check the proxy/firewall and retry |
+| electron-builder fails with `<project folder> not a file` | You have an empty `CSC_LINK` set; unset it or point it at a real `.p12` |
 
-Logs are written to `~/Library/Application Support/GPTN/logs/gptn.log`; open them from
-**Help → Open Logs Folder**, and **Help → Diagnostics…** copies a summary you can share.
+Logs are in `~/Library/Application Support/GPTN/logs/gptn.log`. You can open the folder from
+**Help → Open Logs Folder**, and **Help → Diagnostics…** copies a summary you can paste into an issue.
 
 ## Tech stack
 
-Electron 44 · React 19 · TypeScript 5.9 · Vite 7 (electron-vite) · Zustand · react-markdown + remark-gfm ·
-highlight.js · Vitest + Testing Library · electron-builder.
+Electron 44 · React 19 · TypeScript 5.9 · Vite 7 (electron-vite) · Zustand · react-markdown +
+remark-gfm · highlight.js · Vitest + Testing Library · electron-builder.
 
 ## License
 
-MIT — the GPTN name, logo and visual identity are original and not derived from any other product.
+MIT. The GPTN name, icon and visual identity are original and not derived from any other product.

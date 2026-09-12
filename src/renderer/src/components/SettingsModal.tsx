@@ -552,8 +552,9 @@ function AboutSection(): ReactElement {
       <div className="settings-group-title">GPTN</div>
       <div className="about-block">
         <p style={{ marginTop: 0 }}>
-          GPTN is a native-feeling desktop client for Google Gemini. Conversations, settings and your API key
-          stay on this Mac: data is written to a local database and the key is protected by the macOS Keychain.
+          GPTN is a small desktop client for Google Gemini. Your conversations and settings stay on this Mac, and
+          your API key is encrypted in the macOS Keychain — nothing leaves your machine except the requests you
+          send to Google.
         </p>
         <dl>
           <dt>Version</dt>
