@@ -1,7 +1,7 @@
 {
   "name": "gptn",
   "productName": "GPTN",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A small, calm desktop client for Google Gemini on macOS. No accounts, no server: your API key lives in the Keychain and your conversations stay on your Mac.",
   "author": "GPTN",
   "license": "MIT",

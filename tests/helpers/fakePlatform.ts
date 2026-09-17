@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { GptnApi, DataStats } from '@shared/api'
 import type {
   ChatRequest,
@@ -82,6 +84,10 @@ function defaultKeyTest(): TestKeyResult {
   }
 }
 
+const packageVersion = (
+  JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string }
+).version
+
 let idCounter = 0
 const nextId = (): string => `id-${++idCounter}`
 
@@ -127,7 +133,7 @@ export function createFakePlatform(hasApiKey = true): FakePlatform {
     app: {
       info: async () => ({
         name: 'GPTN',
-        version: '1.0.0',
+        version: packageVersion,
         electron: '44.0.0',
         chrome: '140',
         node: '22',

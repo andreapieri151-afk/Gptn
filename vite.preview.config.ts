@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -11,9 +12,12 @@ import { productionCspPlugin } from './scripts/plugins/csp'
  * clearly labelled preview bridge: layout, theming and interactions are real,
  * Gemini answers are not. The desktop app is the only place with real answers.
  */
+const { version } = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { version: string }
+
 export default defineConfig({
   root: 'src/renderer',
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [react(), productionCspPlugin()],
   resolve: {
     alias: {

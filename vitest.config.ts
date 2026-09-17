@@ -1,7 +1,12 @@
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vitest/config'
 
+const { version } = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { version: string }
+
 export default defineConfig({
+  // Kept in sync with the builds, so a module that reads it works under test too.
+  define: { __APP_VERSION__: JSON.stringify(version) },
   // Test files use the automatic JSX runtime, like the renderer.
   esbuild: { jsx: 'automatic', jsxImportSource: 'react' },
   resolve: {

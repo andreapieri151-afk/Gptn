@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -18,7 +19,7 @@ const themeSource = { value: 'system' }
 vi.mock('electron', () => ({
   app: {
     getName: () => 'GPTN',
-    getVersion: () => '1.0.0',
+    getVersion: () => packageVersion,
     getPath: (name: string) => (name === 'downloads' ? '/tmp' : '/tmp/gptn-userdata'),
     isPackaged: false
   },
@@ -63,6 +64,10 @@ let dir: string
 let conversations: InstanceType<typeof ConversationRepository>
 let settings: InstanceType<typeof SettingsRepository>
 let serviceSend: ReturnType<typeof vi.fn>
+const packageVersion = (
+  JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string }
+).version
+
 /** [model, key] pairs forwarded to the service by the key-test handler. */
 const testedKeys: Array<[string | undefined, string | undefined]> = []
 let serviceStop: ReturnType<typeof vi.fn>
@@ -111,7 +116,7 @@ beforeEach(async () => {
     } as never,
     getMainWindow: () => null,
     userDataPath: dir,
-    appVersion: '1.0.0'
+    appVersion: packageVersion
   })
 })
 
@@ -125,7 +130,7 @@ describe('IPC: app + settings', () => {
   it('exposes application metadata', async () => {
     const info = (await invoke(IPC.app.info)) as { name: string; version: string; platform: string }
     expect(info.name).toBe('GPTN')
-    expect(info.version).toBe('1.0.0')
+    expect(info.version).toBe(packageVersion)
     expect(info.platform).toBe(process.platform)
   })
 

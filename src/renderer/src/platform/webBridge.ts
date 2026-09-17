@@ -114,7 +114,7 @@ export function createPreviewBridge(): GptnApi {
     app: {
       info: async () => ({
         name: 'GPTN',
-        version: '1.0.0-preview',
+        version: `${__APP_VERSION__}-preview`,
         electron: 'n/a',
         chrome: navigator.userAgent,
         node: 'n/a',

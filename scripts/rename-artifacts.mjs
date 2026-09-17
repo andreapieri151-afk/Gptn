@@ -1,6 +1,6 @@
 /**
  * Gives the universal build the canonical release file names
- * (`GPTN-1.0.0.dmg`, `GPTN-1.0.0.zip`) while the per-architecture builds keep
+ * (`GPTN-1.1.0.dmg`, `GPTN-1.1.0.zip`) while the per-architecture builds keep
  * their `-arm64` / `-x64` suffixes.
  *
  * Usage: node scripts/rename-artifacts.mjs   (run after electron-builder)

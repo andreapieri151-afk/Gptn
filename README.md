@@ -79,14 +79,14 @@ an answer, your history is still there when you come back.
 
 ## Requirements
 
-- macOS 13 Ventura or newer, Apple silicon or Intel. (GPTN 1.0.0 ships Electron 44 / Chromium 152,
+- macOS 13 Ventura or newer, Apple silicon or Intel. (GPTN 1.1.0 ships Electron 44 / Chromium 152,
   and that's the oldest macOS it supports — installing it on anything older would just fail to launch.)
 - A Google Gemini API key.
 - Node.js 20+ and npm, only if you want to build it yourself.
 
 ## Install
 
-1. Grab `GPTN-1.0.0-arm64.dmg` (Apple silicon) or `GPTN-1.0.0-x64.dmg` (Intel) from the
+1. Grab `GPTN-1.1.0-arm64.dmg` (Apple silicon) or `GPTN-1.1.0-x64.dmg` (Intel) from the
    [latest release](https://github.com/andreapieri151-afk/Gptn/releases/latest).
 2. Open the DMG and drag **GPTN** into Applications.
 3. The first time, right-click the app and choose **Open**, then **Open** again. These builds aren't
@@ -151,9 +151,9 @@ Everything lands in `release/`:
 
 | File | What it is |
 | --- | --- |
-| `GPTN-1.0.0-arm64.dmg` / `GPTN-1.0.0-x64.dmg` | Drag-and-drop installers (Apple silicon / Intel) |
-| `GPTN-1.0.0-arm64.zip` / `GPTN-1.0.0-x64.zip` | Zipped `GPTN.app` for the same architectures |
-| `GPTN-1.0.0.dmg` / `GPTN-1.0.0.zip` | The same installers from `dist:mac:universal`, renamed by `scripts/rename-artifacts.mjs` |
+| `GPTN-1.1.0-arm64.dmg` / `GPTN-1.1.0-x64.dmg` | Drag-and-drop installers (Apple silicon / Intel) |
+| `GPTN-1.1.0-arm64.zip` / `GPTN-1.1.0-x64.zip` | Zipped `GPTN.app` for the same architectures |
+| `GPTN-1.1.0.dmg` / `GPTN-1.1.0.zip` | The same installers from `dist:mac:universal`, renamed by `scripts/rename-artifacts.mjs` |
 
 The first `dist:mac` needs internet: electron-builder downloads the official Electron binary for the
 target architecture and caches it. Inside the app bundle there's only `out/` and `package.json` — no
