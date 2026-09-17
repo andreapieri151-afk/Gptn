@@ -67,7 +67,7 @@ interface ChatState {
   setTheme(theme: ThemeMode): Promise<void>
   saveApiKey(key: string): Promise<SecretsStatus | null>
   clearApiKey(): Promise<void>
-  runKeyTest(model?: string): Promise<{ ok: boolean; error?: MessageError; model?: string; latencyMs?: number }>
+  runKeyTest(model?: string, key?: string): Promise<{ ok: boolean; error?: MessageError; model?: string; latencyMs?: number }>
   exportConversations(format: 'markdown' | 'json', ids?: string[]): Promise<void>
   importConversations(): Promise<void>
   openSettings(section?: SettingsSection): void
@@ -364,9 +364,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     await get().refreshModels(true)
   },
 
-  async runKeyTest(model) {
+  async runKeyTest(model, key) {
     try {
-      const result = await api.secrets.test(model)
+      const result = await api.secrets.test(model, key)
       if (result.ok) return { ok: true, model: result.model, latencyMs: result.latencyMs }
       return { ok: false, error: result.error }
     } catch (error) {

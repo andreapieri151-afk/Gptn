@@ -46,8 +46,8 @@ const api: GptnApi = {
     status: () => ipcRenderer.invoke(IPC.secrets.status) as Promise<SecretsStatus>,
     setApiKey: (key: string) => ipcRenderer.invoke(IPC.secrets.setApiKey, key) as Promise<SecretsStatus>,
     clearApiKey: () => ipcRenderer.invoke(IPC.secrets.clearApiKey) as Promise<SecretsStatus>,
-    test: (model?: string) =>
-      ipcRenderer.invoke(IPC.secrets.test, model) as Promise<TestKeyResult | TestKeyFailure>
+    test: (model?: string, key?: string) =>
+      ipcRenderer.invoke(IPC.secrets.test, model, key) as Promise<TestKeyResult | TestKeyFailure>
   },
   models: {
     list: (force = false) => ipcRenderer.invoke(IPC.models.list, force) as Promise<ModelInfo[]>

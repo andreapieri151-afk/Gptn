@@ -63,6 +63,8 @@ let dir: string
 let conversations: InstanceType<typeof ConversationRepository>
 let settings: InstanceType<typeof SettingsRepository>
 let serviceSend: ReturnType<typeof vi.fn>
+/** [model, key] pairs forwarded to the service by the key-test handler. */
+const testedKeys: Array<[string | undefined, string | undefined]> = []
 let serviceStop: ReturnType<typeof vi.fn>
 
 /**
@@ -101,7 +103,10 @@ beforeEach(async () => {
       send: serviceSend,
       stop: serviceStop,
       listModels: async () => [{ id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'builtin' }],
-      testKey: async () => ({ ok: true, model: 'gemini-2.5-flash', latencyMs: 42, models: [] }),
+      testKey: async (model?: string, key?: string) => {
+        testedKeys.push([model, key])
+        return { ok: true, model: model ?? 'gemini-2.5-flash', latencyMs: 42, models: [] }
+      },
       invalidateModelCache: () => undefined
     } as never,
     getMainWindow: () => null,
@@ -199,6 +204,24 @@ describe('IPC: secrets', () => {
     const result = (await invoke(IPC.secrets.test)) as { ok: boolean; latencyMs: number }
     expect(result.ok).toBe(true)
     expect(result.latencyMs).toBe(42)
+    expect(testedKeys.at(-1)).toEqual([undefined, undefined])
+  })
+
+  it('forwards a key to verify without storing it (first-run onboarding)', async () => {
+    const result = (await invoke(IPC.secrets.test, 'gemini-2.5-flash', '  AIzaPastedKey  ')) as {
+      ok: boolean
+    }
+    expect(result.ok).toBe(true)
+    // The key is trimmed and handed over as-is: the handler never stores it.
+    expect(testedKeys.at(-1)).toEqual(['gemini-2.5-flash', 'AIzaPastedKey'])
+    expect((await invoke(IPC.secrets.status)) as { hasApiKey: boolean }).toMatchObject({ hasApiKey: true })
+  })
+
+  it('ignores a key argument that is not a usable string', async () => {
+    await invoke(IPC.secrets.test, undefined, '   ')
+    expect(testedKeys.at(-1)).toEqual([undefined, undefined])
+    await invoke(IPC.secrets.test, undefined, 42)
+    expect(testedKeys.at(-1)).toEqual([undefined, undefined])
   })
 })
 

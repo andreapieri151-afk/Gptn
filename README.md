@@ -41,6 +41,9 @@ an answer, your history is still there when you come back.
 
 **Talking to Gemini**
 
+- The first time you open it, GPTN walks you through the key: a link to create one, a field to paste
+  it, and a real request to prove it works before anything is stored. A key that Gemini rejects is
+  never saved — you just paste a correct one.
 - Answers stream in as they're written, behind a quiet "Generating…", with a **Stop** button that
   keeps the partial text. If you'd rather wait for whole answers, turn streaming off in Settings.
 - Models come from your key, not from a hardcoded list — GPTN asks the API what's available and lets
@@ -89,7 +92,7 @@ an answer, your history is still there when you come back.
 3. The first time, right-click the app and choose **Open**, then **Open** again. These builds aren't
    signed with an Apple Developer ID yet, so macOS wants to ask once. After that it opens normally.
 
-Then add your API key, below.
+GPTN then asks for your Gemini API key on its own screen (see below).
 
 ## Your Gemini API key
 
@@ -97,9 +100,15 @@ GPTN doesn't ship with a key, and it never will — it uses yours.
 
 1. Create one in [Google AI Studio](https://aistudio.google.com/apikey). The free tier is enough to
    try it out.
-2. In GPTN, open **Settings → AI / Gemini**, paste the key and hit **Save**. GPTN immediately makes a
-   real request and tells you how long it took, so you find out right away whether it works.
-3. On a proxied or enterprise network you can point GPTN at a different base URL on the same screen.
+2. On first launch GPTN shows a **Connect Gemini** screen: paste the key and press **Save & test**.
+   GPTN makes a real request before storing anything, then tells you which model answered and how
+   long it took.
+3. Already running? The same thing lives in **Settings → AI / Gemini**, with a **Test connection**
+   button next to it. On a proxied or enterprise network you can point GPTN at a different base URL on
+   the same screen.
+
+If the key is wrong, nothing is saved and the screen tells you what Gemini answered — including the
+raw error behind *Technical details* if you want to see it.
 
 Where the key ends up: the macOS Keychain, via Electron's `safeStorage`, encrypted with a key only
 your login session can unlock. It is never written to the repository, never written to the logs, and
@@ -229,6 +238,9 @@ UI  →  State (zustand)  →  window.gptn (IPC)  →  GeminiService  →  Gemin
                                              └→  Persistence     →  Local JSON + Keychain
 ```
 
+`secrets.test` accepts an optional key so the first-run screen can verify a key *before* it is stored:
+the main process uses it for one request and never writes it to the Keychain unless it answers.
+
 No component ever calls the API: components dispatch store actions, the store calls the bridge. All
 privileged work (network, disk, Keychain, dialogs) happens in the main process. Failures are
 translated in one place, `src/shared/errors.ts`, so the UI shows a sentence instead of
@@ -238,7 +250,7 @@ translated in one place, `src/shared/errors.ts`, so the UI shows a sentence inst
 
 | Symptom | What to do |
 | --- | --- |
-| "No API key configured" | Settings → AI / Gemini → paste the key → **Save** (GPTN tests it right away) |
+| "No API key configured" | Paste it on the **Connect Gemini** screen, or in Settings → AI / Gemini (GPTN tests it right away) |
 | "Invalid API key" | Check the key in AI Studio, and that the Generative Language API is enabled for the project |
 | "Too many requests" / quota | Wait for the limit to reset, or switch to a lighter model such as Gemini 2.5 Flash Lite |
 | "Model unavailable" | Pick another model in Settings → AI, or add the ID under *Custom model IDs* |

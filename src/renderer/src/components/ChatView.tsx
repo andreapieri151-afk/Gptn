@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { selectIsGenerating, useChatStore } from '@renderer/state/store'
 import { Composer } from './Composer'
+import { ConnectGemini } from './ConnectGemini'
 import { EmptyState } from './EmptyState'
 import { MessageList } from './MessageList'
 import { Menu, useAnchoredMenu } from './Menu'
@@ -17,6 +18,7 @@ export function ChatView(): ReactElement {
   const activeModel = useChatStore((state) => state.activeModel)
   const models = useChatStore((state) => state.models)
   const secrets = useChatStore((state) => state.secrets)
+  const previewMode = useChatStore((state) => state.previewMode)
   const sidebarCollapsed = useChatStore((state) => state.sidebarCollapsed)
   const isGenerating = useChatStore(selectIsGenerating)
 
@@ -151,7 +153,9 @@ export function ChatView(): ReactElement {
       </header>
 
       <MessageList
-        emptySlot={<EmptyState onPick={pickSuggestion} />}
+        emptySlot={
+          hasApiKey || previewMode ? <EmptyState onPick={pickSuggestion} /> : <ConnectGemini />
+        }
         onRetry={() => void retryLast()}
       />
 
@@ -161,8 +165,8 @@ export function ChatView(): ReactElement {
         onSend={send}
         onStop={() => void stopGeneration()}
         isGenerating={isGenerating}
-        blocked={!hasApiKey}
-        blockedHint="Add your Gemini API key in Settings → AI to start chatting"
+        blocked={!hasApiKey && !previewMode}
+        blockedHint="Paste your Gemini API key above to start chatting"
       />
 
       {modelMenu.anchor && (

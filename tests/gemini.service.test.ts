@@ -30,6 +30,9 @@ interface Harness {
     errors: StreamErrorEvent[]
   }
   calls: { stream: number; single: number }
+  /** API keys handed to the transport, in order. */
+  keys: string[]
+  secrets: ReturnType<typeof fakeSecrets>
   cleanup: () => Promise<void>
 }
 
@@ -44,20 +47,23 @@ async function createHarness(
 
   const events = { deltas: [] as StreamDeltaEvent[], done: [] as StreamDoneEvent[], errors: [] as StreamErrorEvent[] }
   const calls = { stream: 0, single: 0 }
+  const keys: string[] = []
   const transport = {
     streamGenerate: (...args: Parameters<GeminiTransport['streamGenerate']>) => {
       calls.stream += 1
       return streamGenerate(...args)
     },
-    generate: async () => {
+    generate: async (params: { apiKey: string }) => {
       calls.single += 1
+      keys.push(params.apiKey)
       return { text: 'A complete non-streamed answer', thought: '' }
     },
     listModels: async () => [{ id: 'gemini-test', label: 'Gemini Test', source: 'api' as const }]
   } as unknown as GeminiTransport
 
+  const secrets = fakeSecrets(apiKey)
   const service = new GeminiService({
-    secrets: fakeSecrets(apiKey),
+    secrets,
     conversations,
     settings,
     transport,
@@ -74,6 +80,8 @@ async function createHarness(
     settings,
     events,
     calls,
+    keys,
+    secrets,
     cleanup: async () => {
       service.stopAll()
       await conversations.flush().catch(() => undefined)
@@ -317,5 +325,29 @@ describe('GeminiService request shaping', () => {
     const stored = harness.conversations.get(conversation.id)
     expect(stored?.messages).toHaveLength(2)
     expect(stored?.messages[1]).toMatchObject({ role: 'assistant', content: 'Answer', state: 'complete' })
+  })
+})
+
+describe('key verification before storage (first-run onboarding)', () => {
+  it('checks a pasted key without writing it to the Keychain', async () => {
+    harness = await createHarness(async () => ({ text: 'GPTN ready', thought: '' }), null)
+
+    const result = await harness.service.testKey('gemini-test', '  AIzaPastedKey  ')
+
+    expect(result.ok).toBe(true)
+    expect(result.model).toBe('gemini-test')
+    expect(harness.keys).toEqual(['AIzaPastedKey'])
+    // Nothing was persisted: the key is only stored once it has been proven.
+    expect((await harness.secrets.status()).hasApiKey).toBe(false)
+    expect(await harness.secrets.getApiKey()).toBeNull()
+  })
+
+  it('still needs a stored key when no override is passed', async () => {
+    harness = await createHarness(async () => ({ text: 'GPTN ready', thought: '' }), null)
+
+    await expect(harness.service.testKey('gemini-test')).rejects.toMatchObject({
+      code: ErrorCode.NO_API_KEY
+    })
+    expect(harness.keys).toEqual([])
   })
 })

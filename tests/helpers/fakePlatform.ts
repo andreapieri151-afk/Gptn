@@ -1,6 +1,7 @@
 import type { GptnApi, DataStats } from '@shared/api'
 import type {
   ChatRequest,
+  TestKeyFailure,
   Conversation,
   ConversationSummary,
   ConversationsChangedReason,
@@ -24,6 +25,14 @@ export interface FakePlatform {
   requests: ChatRequest[]
   stopped: string[]
   openedUrls: string[]
+  /** Keys handed to `secrets.setApiKey`, in order. */
+  savedKeys: string[]
+  /** Keys handed to `secrets.test`, in order (they must never be stored first). */
+  testedKeys: string[]
+  /** Simulates a machine without a stored key (first run). */
+  setHasApiKey: (value: boolean) => void
+  /** Simulates the outcome of `secrets.test`. */
+  setKeyTestResult: (result: TestKeyResult | TestKeyFailure) => void
   emitDelta: (event: StreamDeltaEvent) => void
   emitDone: (event: StreamDoneEvent) => void
   emitError: (event: StreamErrorEvent) => void
@@ -64,6 +73,15 @@ function defaultSettings(): Settings {
   }
 }
 
+function defaultKeyTest(): TestKeyResult {
+  return {
+    ok: true,
+    model: 'gemini-2.5-flash',
+    latencyMs: 123,
+    models: [{ id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', source: 'api' }]
+  }
+}
+
 let idCounter = 0
 const nextId = (): string => `id-${++idCounter}`
 
@@ -87,6 +105,9 @@ export function createFakePlatform(hasApiKey = true): FakePlatform {
   const requests: ChatRequest[] = []
   const stopped: string[] = []
   const openedUrls: string[] = []
+  const savedKeys: string[] = []
+  const testedKeys: string[] = []
+  let keyTest: TestKeyResult | TestKeyFailure = defaultKeyTest()
 
   const deltaListeners = new Set<Listener<StreamDeltaEvent>>()
   const doneListeners = new Set<Listener<StreamDoneEvent>>()
@@ -142,6 +163,7 @@ export function createFakePlatform(hasApiKey = true): FakePlatform {
     secrets: {
       status: async () => status(),
       setApiKey: async (key: string) => {
+        savedKeys.push(key)
         hasApiKey = !!key.trim()
         return status()
       },
@@ -149,12 +171,10 @@ export function createFakePlatform(hasApiKey = true): FakePlatform {
         hasApiKey = false
         return status()
       },
-      test: async (): Promise<TestKeyResult> => ({
-        ok: true,
-        model: settings.model,
-        latencyMs: 123,
-        models: [{ id: settings.model, label: settings.model, source: 'api' }]
-      })
+      test: async (_model?: string, key?: string): Promise<TestKeyResult | TestKeyFailure> => {
+        if (key) testedKeys.push(key)
+        return keyTest
+      }
     },
     models: {
       list: async (): Promise<ModelInfo[]> => [
@@ -276,11 +296,23 @@ export function createFakePlatform(hasApiKey = true): FakePlatform {
     emitError: (event) => errorListeners.forEach((listener) => listener(event)),
     emitConversationsChanged: (reason) => conversationsListeners.forEach((listener) => listener({ reason })),
     emitCommand: (command) => commandListeners.forEach((listener) => listener(command)),
+    savedKeys,
+    testedKeys,
+    setHasApiKey: (value) => {
+      hasApiKey = value
+    },
+    setKeyTestResult: (result) => {
+      keyTest = result
+    },
     reset: () => {
       conversations.length = 0
       requests.length = 0
       stopped.length = 0
       openedUrls.length = 0
+      savedKeys.length = 0
+      testedKeys.length = 0
+      hasApiKey = true
+      keyTest = defaultKeyTest()
       Object.assign(settings, defaultSettings())
     }
   }

@@ -103,10 +103,14 @@ export function registerIpcHandlers(context: IpcContext): void {
     return secrets.status()
   })
 
-  ipcMain.handle(IPC.secrets.test, async (_event, model: unknown) => {
+  ipcMain.handle(IPC.secrets.test, async (_event, model: unknown, key: unknown) => {
     const started = Date.now()
     try {
-      const result = await service.testKey(typeof model === 'string' ? model : undefined)
+      // `key` is optional: the onboarding checks a pasted key before storing it.
+      const result = await service.testKey(
+        typeof model === 'string' ? model : undefined,
+        typeof key === 'string' && key.trim() ? key.trim() : undefined
+      )
       log.info('secrets', `key test ok with ${result.model} in ${result.latencyMs}ms`)
       return result
     } catch (error) {

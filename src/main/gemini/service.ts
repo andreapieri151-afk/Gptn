@@ -417,9 +417,12 @@ export class GeminiService {
     this.modelCache = null
   }
 
-  /** Settings → AI → “Test connection”: a real round trip to Gemini. */
-  async testKey(modelOverride?: string): Promise<TestKeyResult> {
-    const apiKey = await this.requireApiKey()
+  /**
+   * Settings → AI → “Test connection”: a real round trip to Gemini.
+   * `keyOverride` lets the first-run screen verify a key before it is stored.
+   */
+  async testKey(modelOverride?: string, keyOverride?: string): Promise<TestKeyResult> {
+    const apiKey = keyOverride?.trim() || (await this.requireApiKey())
     const model = modelOverride?.trim() || this.settings.get().model
     const started = Date.now()
     let models: ModelInfo[] = []

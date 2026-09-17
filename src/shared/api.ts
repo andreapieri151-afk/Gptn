@@ -44,8 +44,12 @@ export interface GptnApi {
     status(): Promise<SecretsStatus>
     setApiKey(key: string): Promise<SecretsStatus>
     clearApiKey(): Promise<SecretsStatus>
-    /** Live call to Gemini using the stored key — verifies key + model. */
-    test(model?: string): Promise<TestKeyResult | TestKeyFailure>
+    /**
+     * Live call to Gemini — verifies key + model.
+     * Pass `key` to check a key before it is stored (first-run onboarding);
+     * without it the key already in the Keychain is used.
+     */
+    test(model?: string, key?: string): Promise<TestKeyResult | TestKeyFailure>
   }
   models: {
     /** Queries the API when a key is available, otherwise returns the curated list. */

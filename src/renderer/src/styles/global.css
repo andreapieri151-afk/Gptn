@@ -1953,3 +1953,171 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* =========================================================================
+   Connect Gemini — first-run screen shown while no API key is configured.
+   ========================================================================= */
+
+.connect-state {
+  justify-content: flex-start;
+  padding-top: 64px;
+}
+
+.connect-card {
+  width: 100%;
+  max-width: 520px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-app);
+  box-shadow: var(--shadow-sm);
+  padding: 6px 16px;
+}
+
+.connect-step {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.connect-step + .connect-step {
+  border-top: 1px solid var(--border);
+}
+
+.connect-step-index {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.connect-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.connect-step-title {
+  font-size: var(--fs-ui);
+  font-weight: 600;
+}
+
+.connect-step-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.connect-step .button {
+  align-self: flex-start;
+  gap: 6px;
+}
+
+.connect-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.connect-input-row .button {
+  flex: none;
+  align-self: auto;
+}
+
+.connect-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+
+.connect-note.warn {
+  color: var(--warning);
+}
+
+.connect-status {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin: 4px 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.connect-status.ok {
+  background: rgba(29, 135, 80, 0.08);
+  color: var(--text-primary);
+}
+
+.connect-status.ok svg {
+  color: var(--success);
+  margin-top: 2px;
+}
+
+.connect-status.error {
+  background: var(--danger-soft);
+  color: var(--text-primary);
+}
+
+.connect-status.error svg {
+  color: var(--danger);
+  margin-top: 2px;
+}
+
+.connect-status-title {
+  font-weight: 600;
+}
+
+.connect-status-text {
+  color: var(--text-secondary);
+}
+
+.connect-details {
+  margin-top: 6px;
+}
+
+.connect-details summary {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.connect-details code {
+  display: block;
+  margin-top: 6px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-code);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  word-break: break-word;
+  user-select: text;
+}
+
+.connect-link {
+  margin-top: 14px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.connect-link:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}

@@ -139,15 +139,16 @@ describe('GPTN application shell', () => {
     expect(platform.requests).toHaveLength(0)
   })
 
-  it('explains that a key is needed when none is stored', async () => {
+  it('guides the user to connect Gemini when no key is stored', async () => {
     await platform.api.secrets.clearApiKey()
     const secrets = await platform.api.secrets.status()
     useChatStore.setState({ secrets })
     render(<App />)
 
-    await waitFor(() =>
-      expect(screen.getByPlaceholderText(/Add your Gemini API key in Settings/)).toBeInTheDocument()
-    )
-    expect(screen.getByText(/Add your Gemini API key in Settings → AI to start chatting/)).toBeInTheDocument()
+    // First run: the onboarding replaces the chat screen instead of letting the
+    // user type a message that could never be answered.
+    await waitFor(() => expect(screen.getByText('Connect Gemini')).toBeInTheDocument())
+    expect(screen.getByText(/Paste your Gemini API key above to start chatting/)).toBeInTheDocument()
+    expect(screen.queryByText('How can I help you?')).not.toBeInTheDocument()
   })
 })
