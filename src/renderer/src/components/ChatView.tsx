@@ -18,6 +18,7 @@ export function ChatView(): ReactElement {
   const activeModel = useChatStore((state) => state.activeModel)
   const models = useChatStore((state) => state.models)
   const secrets = useChatStore((state) => state.secrets)
+  const messages = useChatStore((state) => state.messages)
   const previewMode = useChatStore((state) => state.previewMode)
   const sidebarCollapsed = useChatStore((state) => state.sidebarCollapsed)
   const isGenerating = useChatStore(selectIsGenerating)
@@ -166,7 +167,13 @@ export function ChatView(): ReactElement {
         onStop={() => void stopGeneration()}
         isGenerating={isGenerating}
         blocked={!hasApiKey && !previewMode}
-        blockedHint="Paste your Gemini API key above to start chatting"
+        blockedHint={
+          // On an empty draft the onboarding card is on screen; on an existing
+          // conversation the key has to come from Settings.
+          messages.length
+            ? 'Add your Gemini API key in Settings → AI to start chatting'
+            : 'Paste your Gemini API key above to start chatting'
+        }
       />
 
       {modelMenu.anchor && (
