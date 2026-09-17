@@ -1,0 +1,132 @@
+/* =========================================================================
+   Syntax highlighting tokens (highlight.js class names, GPTN palette)
+   ========================================================================= */
+
+:root {
+  --hl-comment: #8a8f98;
+  --hl-keyword: #a626a4;
+  --hl-string: #237b4b;
+  --hl-number: #b3541e;
+  --hl-function: #3a63c4;
+  --hl-type: #8a6d1a;
+  --hl-variable: #b3541e;
+  --hl-builtin: #1f7a8c;
+  --hl-attr: #8a6d1a;
+  --hl-tag: #c2410c;
+  --hl-deletion: #c0392b;
+  --hl-addition: #1d8750;
+  --hl-meta: #8a8f98;
+}
+
+:root[data-theme='dark'] {
+  --hl-comment: #6f7681;
+  --hl-keyword: #c792ea;
+  --hl-string: #8bd18b;
+  --hl-number: #f0a878;
+  --hl-function: #85b1ff;
+  --hl-type: #e6c37a;
+  --hl-variable: #f0a878;
+  --hl-builtin: #6fcbd6;
+  --hl-attr: #e6c37a;
+  --hl-tag: #ff9e79;
+  --hl-deletion: #ff7a6b;
+  --hl-addition: #5dd39e;
+  --hl-meta: #6f7681;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --hl-comment: #6f7681;
+    --hl-keyword: #c792ea;
+    --hl-string: #8bd18b;
+    --hl-number: #f0a878;
+    --hl-function: #85b1ff;
+    --hl-type: #e6c37a;
+    --hl-variable: #f0a878;
+    --hl-builtin: #6fcbd6;
+    --hl-attr: #e6c37a;
+    --hl-tag: #ff9e79;
+    --hl-deletion: #ff7a6b;
+    --hl-addition: #5dd39e;
+    --hl-meta: #6f7681;
+  }
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--hl-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag,
+.hljs-name {
+  color: var(--hl-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--hl-string);
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-selector-id,
+.hljs-template-variable {
+  color: var(--hl-number);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-selector-class {
+  color: var(--hl-function);
+}
+
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-title.class_,
+.hljs-attr,
+.hljs-attribute,
+.hljs-property {
+  color: var(--hl-attr);
+}
+
+.hljs-variable,
+.hljs-params,
+.hljs-template-tag {
+  color: var(--hl-variable);
+}
+
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-meta .hljs-keyword {
+  color: var(--hl-builtin);
+}
+
+.hljs-tag {
+  color: var(--hl-tag);
+}
+
+.hljs-meta {
+  color: var(--hl-meta);
+}
+
+.hljs-deletion {
+  color: var(--hl-deletion);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
