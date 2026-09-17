@@ -189,10 +189,18 @@ if you're not signing.
 
 ### Continuous integration
 
-`.github/workflows/build-macos.yml` runs on every `v*` tag (and manually): `npm ci`, typecheck, tests,
-then packaging. The installers are uploaded as workflow artifacts and attached to the GitHub Release
-of the tag. Add the secrets above to the repository and those builds come out signed and notarised
-automatically; without them you still get a working unsigned app.
+Two workflows, both starting with `npm ci`:
+
+| Workflow | When | What it does |
+| --- | --- | --- |
+| `ci.yml` | every push and pull request | `npm run verify` on Linux: typecheck (main, preload, renderer, tests), the full test suite, the production build |
+| `build-macos.yml` | `v*` tags, or manually | the same typecheck and tests on macOS, then `GPTN.app`, the DMG and the ZIP |
+
+The packaging workflow uploads the installers as workflow artifacts and, for tag builds, attaches them
+to the GitHub Release of the tag. Add the secrets above to the repository and those builds come out
+signed and notarised automatically; without them you still get a working unsigned app. If packaging
+fails, the tail of its log is published as a job annotation, so the reason is visible straight from
+the checks panel.
 
 ### Icon
 
